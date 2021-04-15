@@ -1,12 +1,9 @@
 ---
-title: "Cellana"
-author: "Niklas Hausmann"
-date: "Today"
+title: "Cellana test Mg/Ca and d18O"
 output: pdf_document
 ---
 
-# Libraries 
-```{r, echo=FALSE}
+```{r Libraries, echo=FALSE}
 
 knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
   
@@ -24,9 +21,7 @@ knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
 }
 ```
 
-# Raw Data copied from excel file
-
-```{r}
+```{r Raw stable oxygen isotope data }
 C16 <- tibble::tribble(
          ~specimen,    ~C,    ~O,
             "16-01",  -1.1,   1.2,
@@ -140,7 +135,9 @@ Cella <- full_join(C16,C17,by="sample_seq") %>%
 ```
 
 # Plots
-## Basic data
+
+## Unchanged stable carbon and oxygen isotope data
+
 ```{r}
 Cella %>% 
   ggplot()+
@@ -151,12 +148,17 @@ Cella %>%
     linetype=specimen,
   )+
   geom_path()+
-  geom_point()
+  geom_point() +
+  xlab("Sample sequence")
 
 ```
 
-# Mg/Ca data
-## C16
+\newpage
+
+# Comparison of Oxygen Isotopes with Mg/Ca data
+
+## C16 unaligned
+
 ```{r}
 
 C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>% 
@@ -167,36 +169,36 @@ C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>%
          mg_ca=X5,
          st_dev=X6)
 
-# OmapC16 <- O_aligned %>% 
-#   arrange(x) %>% 
-#   filter(specimen=="C16") %>% 
-#   ggplot()+
-#   aes(x=x,
-#       y=-value)+
-#   geom_path()
-
 OmapC16 <- Cella %>% 
   filter(specimen=="C16",
          element=="O") %>% 
   ggplot()+
   aes(x=sample_seq,
-      y=-VPDB)+
-  geom_path()
+      y=VPDB)+
+  geom_path() +
+    scale_y_reverse()+
+  xlab("Sample sequence")+
+  ylab("inverse VPDB")
+
+  
 
 MgCamapC16 <- C16Trace_df %>%
   filter(dist<5.5) %>% 
   ggplot() +
-  aes(x = dist*0.8,
+  aes(x = dist,
       y = mg_ca) +
   xlim(0,5)+
-  geom_path()
+  geom_path() +
+  xlab("Distance to Edge [mm]")+
+  ylab("Mg/Ca Ratio")
   
 OmapC16/MgCamapC16
 
 
 ```
 
-## C17
+## C17 unaligned
+
 ```{r}
 
 C17TraceB_df <- read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
@@ -207,41 +209,41 @@ C17TraceB_df <- read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>%
          mg_ca=X5,
          st_dev=X6)
 
-# OmapC17 <- O_aligned %>% 
-#   arrange(x) %>% 
-#   filter(specimen=="C17") %>% 
-#   ggplot()+
-#   aes(x=x,
-#       y=-value)+
-#   geom_path()
-
 OmapC17 <- Cella %>% 
   filter(specimen=="C17",
          element=="O") %>% 
   ggplot()+
   aes(x=sample_seq,
-      y=-VPDB)+
-  geom_path()
+      y=VPDB)+
+  geom_path()+
+    scale_y_reverse()+
+  xlab("Sample sequence")+
+  ylab("inverse VPDB")+
+  ggtitle("",subtitle = "there are some gaps in this shell record")
 
 MgCamapC17 <- C17TraceB_df %>%
   filter(dist<5.5) %>%
   ggplot() +
   aes(x = dist,
       y = mg_ca) +
-  # xlim(0,5)+
-  geom_path()
+  geom_path()+
+  xlab("Distance to Edge [mm]")+
+  ylab("Mg/Ca Ratio")
   
-MgCamapC17/OmapC17
+OmapC17/MgCamapC17
 
 
 ```
 
+\newpage
+
 # Dynamic Time Warping and correlation graphs
 
-# Dynamic Time Warping using oxygen isotope sequences
-## C16
+## Aligning C16 records
+
 ### Warp data
-```{r}
+
+```{r fig.height=4}
 
 SeqC16_O <- C16 %>% 
   mutate(O=scale(O)) %>% 
@@ -261,7 +263,8 @@ plot(alignment_C16,
      offset = 3)
 ```
 
-## Adjust data
+### Adjust data
+
 ```{r}
 
 Al_C16_O <- C16 %>% 
@@ -294,10 +297,11 @@ Al_C16_O_map <- C16_aligned %>%
   filter(proxy=="O") %>% 
 ggplot()+
   aes(x=x,
-      y=-value)+
+      y=value)+
   geom_line()+
+  scale_y_reverse()+
   xlab("arbitrary distance")+
-  ylab("d18O VPDB inverse")
+  ylab("inverse VPDB")
 
 Al_C16_mg_ca_map <- C16_aligned %>%
   filter(proxy=="mg_ca") %>% 
@@ -315,8 +319,12 @@ Al_C16_O_map/Al_C16_mg_ca_map
 
 ```
 
-## C17
+\newpage
+
+## Aligning C17 records
+
 ### Warp data
+
 ```{r}
 
 SeqC17_O <- C17 %>% 
@@ -324,7 +332,7 @@ SeqC17_O <- C17 %>%
   pull(O)
   
 SeqC17_mg_ca <- C17TraceB_df %>% 
-    filter(dist<5.5) %>% 
+    filter(dist<6) %>% 
     mutate(mg_ca=scale(mg_ca)) %>% 
   pull(mg_ca) 
 
@@ -337,7 +345,8 @@ plot(alignment_C17,
      offset = 3)
 ```
 
-## Adjust data
+### Adjust data
+
 ```{r}
 
 Al_C17_O <- C17 %>% 
@@ -347,7 +356,7 @@ Al_C17_O <- C17 %>%
   select(x,value,proxy)
   
 Al_C17_mg_ca <- C17TraceB_df %>%
-  filter(dist<5.5) %>%
+  filter(dist<6) %>%
   pull(mg_ca) %>%
   .[alignment_C17$index2] %>% 
   as.data.frame() %>% 
@@ -370,10 +379,11 @@ Al_C17_O_map <- C17_aligned %>%
   filter(proxy=="O") %>% 
 ggplot()+
   aes(x=x,
-      y=-value)+
+      y=value)+
+    scale_y_reverse()+
   geom_line()+
   xlab("arbitrary distance")+
-  ylab("d18O VPDB inverse")
+  ylab("inverse VPDB")
 
 Al_C17_mg_ca_map <- C17_aligned %>%
   filter(proxy=="mg_ca") %>% 
@@ -395,38 +405,86 @@ Al_C17_O_map/Al_C17_mg_ca_map
 
 ```{r}
 
+df_C16 <- C16_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  select(O,mg_ca)
+
+LM_C16 <- lm(O ~ mg_ca,
+         data=df_C16,
+         )
+R2_C16 <- round(summary(LM_C16)[[8]],2)
+
+
+df_C17 <- C17_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  select(O,mg_ca)
+
+LM_C17 <- lm(O ~ mg_ca,
+         data=df_C17,
+         )
+R2_C17 <- round(summary(LM_C17)[[8]],2)
+
+# C16_aligned %>%
+#   mutate(specimen = "C16") %>%
+#   rbind(C17_aligned %>% mutate(specimen = "C17")) %>%
+#   pivot_wider(names_from = "proxy",
+#               values_from = "value") %>%
+#   ggplot() +
+#   aes(x = O,
+#       y = mg_ca,
+#       col = specimen) +
+#   geom_point() +
+#   xlim(-0.5, 2.5) +
+#   ylim(0.2, 0.5) +
+#   geom_smooth(method = "lm", se = FALSE) +
+#   annotate("text",
+#            x = 0,
+#            y = 0.3,
+#            label = paste("R²=", R2_C16)) +
+#   annotate("text",
+#            x = 1.1,
+#            y = 0.45,
+#            label = paste("R²=", R2_C17)) +
+#   ylab("Mg/Ca Ratio") +
+#   xlab("d18O VPDB")
+
 C16_aligned %>%
-  mutate(specimen="C16") %>% 
-  rbind(C17_aligned %>% mutate(specimen="C17") ) %>% 
   pivot_wider(names_from = "proxy",
               values_from = "value") %>%
-  ggplot()+
-  aes(x=O,
-      y=mg_ca,
-      col=specimen)+
-  geom_point()+
-  xlim(-3,2)+
-  ylim(0.2,0.55)+
-  geom_smooth(method = "lm")
+  ggplot() +
+  aes(x = O,
+      y = mg_ca) +
+  geom_point() +
+  xlim(-0.5, 2.5) +
+  ylim(0.2, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+  ylab("Mg/Ca Ratio") +
+  xlab("d18O VPDB")+
+  ggtitle("Correlation graph for C16 d18O and Mg/Ca",
+          subtitle = paste("R²=", R2_C16))
 
-
-
-C16_aligned %>%
-  mutate(specimen="C16") %>% 
-  rbind(C17_aligned %>% mutate(specimen="C17") ) %>% 
+C17_aligned %>%
   pivot_wider(names_from = "proxy",
               values_from = "value") %>%
-  filter(x<30) %>% 
-  ggplot()+
-  aes(x=O,
-      y=mg_ca,
-      col=specimen)+
-  geom_point()+
-  xlim(-3,2)+
-  ylim(0.2,0.55)+
-  geom_smooth(method = "lm") + 
-  ggtitle("",subtitle="removing the later points (x<30) to adjust for time averaged isotope samples")
-
-
+  ggplot() +
+  aes(x = O,
+      y = mg_ca) +
+  geom_point() +
+  xlim(-0.5, 2.5) +
+  ylim(0.2, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+  ylab("Mg/Ca Ratio") +
+  xlab("d18O VPDB")+
+  ggtitle("Correlation graph for C17 d18O and Mg/Ca",
+          subtitle = paste("R²=", R2_C17))
 ```
-
