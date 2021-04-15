@@ -1,0 +1,116 @@
+---
+title: "Maps"
+author: "Niklas Hausmann"
+date: "Today"
+output: pdf_document
+---
+
+# Libraries 
+```{r}
+{
+  pacman::p_load(
+    here,
+    janitor,viridis,
+    tidyverse,
+    cowplot,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+```
+
+# Data
+
+## C16
+
+```{r}
+
+C16Map_df <- read_csv(here("data","C16Map.csv")) %>% 
+  clean_names() %>% 
+  rename(y=x1,
+         x=x2,
+         z=x3) %>% 
+  select(-x6)
+
+C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>% 
+  rename(y=X1,
+         x=X2,
+         z=X3,
+         dist=X4,
+         mg_ca=X5,
+         st_dev=X6)
+
+C16Trace_df %>% 
+  ggplot()+
+  aes(dist,mg_ca,col=log(mg_ca))+
+  geom_point(show.legend = FALSE)+
+  scale_color_viridis(option="G",begin=0.01)
+  
+
+
+
+C16Map_df %>%
+  ggplot() +
+  aes(x,
+      y,
+      col = log(mg_ca)) +
+  geom_point(size = 0.2) +
+  scale_color_viridis(option = "G",
+                      begin = 0.01) +
+  coord_fixed() +
+  geom_path(data = C16Trace_df,
+            aes(x = x, y = y),
+            col = "red",
+            linetype="dashed",
+            size=0.7)
+
+
+
+```
+
+
+
+## C17
+
+```{r}
+
+C17MapB_df <- read_csv(here("data","C17MapB.csv"),col_names = FALSE) %>% 
+  rename(y=X1,
+         x=X2,
+         z=X3,
+         mg_ca=X4,
+         st_dev=X5)
+
+C17TraceB_df <- read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
+  rename(y=X1,
+         x=X2,
+         z=X3,
+         dist=X4,
+         mg_ca=X5,
+         st_dev=X6)
+
+
+
+
+
+
+C17MapB_df %>%
+  ggplot() +
+  aes(x,
+      y,
+      col = log(mg_ca)) +
+  geom_point(size = 0.5) +
+  scale_color_viridis(option = "G",
+                      begin = 0.01) +
+  coord_fixed()+
+  geom_path(data = C17TraceB_df,
+            aes(x = x, y = y),
+            col = "red",
+            linetype="dashed",
+            size=0.7)
+
+
+
+```
+

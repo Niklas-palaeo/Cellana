@@ -24,7 +24,7 @@ knitr::opts_chunk$set(echo=FALSE)
 }
 ```
 
-# Raw Data
+# Raw Data copied from excel file
 
 ```{r}
 C16 <- tibble::tribble(
@@ -255,6 +255,87 @@ C_aligned %>%
       y=C,
       linetype=specimen)+
   geom_line()
+
+
+```
+
+# Mg/Ca data
+## C16
+```{r}
+
+C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>% 
+  rename(y=X1,
+         x=X2,
+         z=X3,
+         dist=X4,
+         mg_ca=X5,
+         st_dev=X6)
+
+# OmapC16 <- O_aligned %>% 
+#   arrange(x) %>% 
+#   filter(specimen=="C16") %>% 
+#   ggplot()+
+#   aes(x=x,
+#       y=-value)+
+#   geom_path()
+
+OmapC16 <- Cella %>% 
+  filter(specimen=="C16",
+         element=="O") %>% 
+  ggplot()+
+  aes(x=sample_seq,
+      y=-VPDB)+
+  geom_path()
+
+MgCamapC16 <- C16Trace_df %>%
+  filter(dist<5.5) %>% 
+  ggplot() +
+  aes(x = dist*0.8,
+      y = mg_ca) +
+  xlim(0,5)+
+  geom_path()
+  
+MgCamapC16/OmapC16
+
+
+```
+
+## C17
+```{r}
+
+C17Trace_df <- read_csv(here("data","C17Trace.csv"),col_names = FALSE) %>% 
+  rename(y=X1,
+         x=X2,
+         z=X3,
+         dist=X4,
+         mg_ca=X5,
+         st_dev=X6)
+
+# OmapC17 <- O_aligned %>% 
+#   arrange(x) %>% 
+#   filter(specimen=="C17") %>% 
+#   ggplot()+
+#   aes(x=x,
+#       y=-value)+
+#   geom_path()
+
+OmapC17 <- Cella %>% 
+  filter(specimen=="C17",
+         element=="O") %>% 
+  ggplot()+
+  aes(x=sample_seq,
+      y=-VPDB)+
+  geom_path()
+
+MgCamapC17 <- C17Trace_df %>%
+  filter(dist<5.5) %>% 
+  ggplot() +
+  aes(x = dist*0.8,
+      y = mg_ca) +
+  xlim(0,5)+
+  geom_path()
+  
+MgCamapC17/OmapC17
 
 
 ```
