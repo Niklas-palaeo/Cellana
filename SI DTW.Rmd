@@ -1,5 +1,5 @@
 ---
-title: "Cellana"
+title: "SI DTW"
 author: "Niklas Hausmann"
 date: "Today"
 output: pdf_document
@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
     here,
     janitor,
     tidyverse,
-    cowplot,ShellChron,
+    cowplot,
     patchwork,
     RColorBrewer,
     dtw) 
@@ -139,294 +139,107 @@ Cella <- full_join(C16,C17,by="sample_seq") %>%
 
 ```
 
-# Plots
-## Basic data
-```{r}
-Cella %>% 
-  ggplot()+
-  aes(
-    x=sample_seq,
-    y=VPDB,
-    col=element,
-    linetype=specimen,
-  )+
-  geom_path()+
-  geom_point()
-
-```
-
-# Mg/Ca data
-## C16
-```{r}
-
-C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>% 
-  rename(y=X1,
-         x=X2,
-         z=X3,
-         dist=X4,
-         mg_ca=X5,
-         st_dev=X6)
-
-# OmapC16 <- O_aligned %>% 
-#   arrange(x) %>% 
-#   filter(specimen=="C16") %>% 
-#   ggplot()+
-#   aes(x=x,
-#       y=-value)+
-#   geom_path()
-
-OmapC16 <- Cella %>% 
-  filter(specimen=="C16",
-         element=="O") %>% 
-  ggplot()+
-  aes(x=sample_seq,
-      y=-VPDB)+
-  geom_path()
-
-MgCamapC16 <- C16Trace_df %>%
-  filter(dist<5.5) %>% 
-  ggplot() +
-  aes(x = dist*0.8,
-      y = mg_ca) +
-  xlim(0,5)+
-  geom_path()
-  
-OmapC16/MgCamapC16
-
-
-```
-
-## C17
-```{r}
-
-C17TraceB_df <- read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
-  rename(y=X1,
-         x=X2,
-         z=X3,
-         dist=X4,
-         mg_ca=X5,
-         st_dev=X6)
-
-# OmapC17 <- O_aligned %>% 
-#   arrange(x) %>% 
-#   filter(specimen=="C17") %>% 
-#   ggplot()+
-#   aes(x=x,
-#       y=-value)+
-#   geom_path()
-
-OmapC17 <- Cella %>% 
-  filter(specimen=="C17",
-         element=="O") %>% 
-  ggplot()+
-  aes(x=sample_seq,
-      y=-VPDB)+
-  geom_path()
-
-MgCamapC17 <- C17TraceB_df %>%
-  filter(dist<5.5) %>%
-  ggplot() +
-  aes(x = dist,
-      y = mg_ca) +
-  # xlim(0,5)+
-  geom_path()
-  
-MgCamapC17/OmapC17
-
-
-```
-
-# Dynamic Time Warping and correlation graphs
-
 # Dynamic Time Warping using oxygen isotope sequences
-## C16
-### Warp data
 ```{r}
 
-SeqC16_O <- C16 %>% 
-  mutate(O=scale(O)) %>% 
-  pull(O)
+SeqC16_O <- Cella %>% 
+  filter(element=="O") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C16) %>% 
+    na.omit()
   
-SeqC16_mg_ca <- C16Trace_df %>% 
-    filter(dist<5.5) %>% 
-    mutate(mg_ca=scale(mg_ca)) %>% 
-  pull(mg_ca) 
+SeqC17_O <- Cella %>% 
+  filter(element=="O") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C17) %>% 
+  na.omit()
 
-alignment_C16 <- dtw(SeqC16_O*-1,SeqC16_mg_ca,
+alignment <- dtw(SeqC16_O,SeqC17_O,
                  keep=TRUE,
                  step.pattern=symmetric2)
            
-plot(alignment_C16,
+plot(alignment,
      type = "twoway",
      offset = 3)
 ```
 
-## Adjust data
-```{r}
-
-Al_C16_O <- C16 %>% 
-  mutate(x=1:43,
-         proxy="O") %>% 
-  rename(value=O) %>% 
-  select(x,value,proxy)
+## Add new x-values to O
+```{r fig.height=4, fig.width=6}
+Al_C16_O <- SeqC16_O %>% #[alignment$index1] %>% 
+  as_tibble() %>% 
+  cbind(x=1:43) %>% 
+  mutate(specimen="C16")
   
-Al_C16_mg_ca <- C16Trace_df %>%
-  filter(dist<5.5) %>%
-  pull(mg_ca) %>%
-  .[alignment_C16$index2] %>% 
-  as.data.frame() %>% 
-  clean_names() %>% 
-  rename(value=x) %>% 
-  cbind(x=alignment_C16$index1) %>% 
-    mutate(proxy="mg_ca")
+Al_C17_O <- SeqC17_O [alignment$index2] %>% 
+  as_tibble() %>% 
+  cbind(x=alignment$index1) %>% 
+    mutate(specimen="C17")
 
-
-C16_aligned <- rbind(Al_C16_O,Al_C16_mg_ca) %>% 
-  group_by(x,proxy) %>%
+O_aligned <- rbind(Al_C16_O,Al_C17_O) %>% 
+  group_by(x,specimen) %>%
   summarise(value=mean(value)) %>% #this unifies points that were given the same location
   ungroup() %>%
   mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
-  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  group_by(specimen,value) %>% # this unifies extra points that were added to fill gaps in the record
   summarise(x=mean(x))
 
-
-Al_C16_O_map <- C16_aligned %>%
-  filter(proxy=="O") %>% 
-ggplot()+
+O_aligned %>% 
+  rename(O=value) %>% 
+  ggplot()+
   aes(x=x,
-      y=-value)+
-  geom_line()+
-  xlab("arbitrary distance")+
-  ylab("d18O VPDB inverse")
+      y=O,
+      linetype=specimen)+
+  geom_line()
 
-Al_C16_mg_ca_map <- C16_aligned %>%
-  filter(proxy=="mg_ca") %>% 
-ggplot()+
-  aes(x=x,
-      y=value)+
-  geom_line()+
-  xlab("arbitrary distance")+
-    ylab("Mg/Ca ratio")+
-  ylim(0.2,0.4)
-
-
-
-Al_C16_O_map/Al_C16_mg_ca_map
+# rm(SeqC16,SeqC17,Al_C16,Al_C17,alignment)
 
 ```
 
-## C17
-### Warp data
-```{r}
+## Adding d13C values to check alignment
+```{r fig.height=4, fig.width=6}
 
-SeqC17_O <- C17 %>% 
-  mutate(O=scale(O)) %>% 
-  pull(O)
+Al_C16_C <- Cella %>% 
+  filter(element=="C") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C16) %>% 
+  na.omit() %>% 
+  as_tibble() %>% 
+  cbind(x=1:43) %>% 
+  mutate(specimen="C16")
   
-SeqC17_mg_ca <- C17TraceB_df %>% 
-    filter(dist<5.5) %>% 
-    mutate(mg_ca=scale(mg_ca)) %>% 
-  pull(mg_ca) 
+SeqC17_C <- Cella %>% 
+  filter(element=="C") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C17) %>% 
+  na.omit()
 
-alignment_C17 <- dtw(SeqC17_O*-1,SeqC17_mg_ca,
-                 keep=TRUE,
-                 step.pattern=symmetric2)
-           
-plot(alignment_C17,
-     type = "twoway",
-     offset = 3)
-```
-
-## Adjust data
-```{r}
-
-Al_C17_O <- C17 %>% 
-  mutate(x=1:46,
-         proxy="O") %>% 
-  rename(value=O) %>% 
-  select(x,value,proxy)
-  
-Al_C17_mg_ca <- C17TraceB_df %>%
-  filter(dist<5.5) %>%
-  pull(mg_ca) %>%
-  .[alignment_C17$index2] %>% 
-  as.data.frame() %>% 
-  clean_names() %>% 
-  rename(value=x) %>% 
-  cbind(x=alignment_C17$index1) %>% 
-    mutate(proxy="mg_ca")
+Al_C17_C <- SeqC17_C [alignment$index2] %>% 
+  as_tibble() %>% 
+  cbind(x=alignment$index1) %>% 
+    mutate(specimen="C17")
 
 
-C17_aligned <- rbind(Al_C17_O,Al_C17_mg_ca) %>% 
-  group_by(x,proxy) %>%
+C_aligned <- rbind(Al_C16_C,Al_C17_C) %>% 
+  group_by(x,specimen) %>%
   summarise(value=mean(value)) %>% #this unifies points that were given the same location
   ungroup() %>%
   mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
-  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  group_by(specimen,value) %>% # this unifies extra points that were added to fill gaps in the record
   summarise(x=mean(x))
 
-
-Al_C17_O_map <- C17_aligned %>%
-  filter(proxy=="O") %>% 
-ggplot()+
+C_aligned %>% 
+  rename(C=value,) %>% 
+  ggplot()+
   aes(x=x,
-      y=-value)+
-  geom_line()+
-  xlab("arbitrary distance")+
-  ylab("d18O VPDB inverse")
+      y=C,
+      linetype=specimen)+
+  geom_line()
 
-Al_C17_mg_ca_map <- C17_aligned %>%
-  filter(proxy=="mg_ca") %>% 
-ggplot()+
-  aes(x=x,
-      y=value)+
-  geom_line()+
-  xlab("arbitrary distance")+
-    ylab("Mg/Ca ratio")+
-  ylim(0.2,0.55)
-
-
-
-Al_C17_O_map/Al_C17_mg_ca_map
 
 ```
 
-# Correlation Graphs
-
-```{r}
-
-C16_aligned %>%
-  mutate(specimen="C16") %>% 
-  rbind(C17_aligned %>% mutate(specimen="C17") ) %>% 
-  pivot_wider(names_from = "proxy",
-              values_from = "value") %>%
-  ggplot()+
-  aes(x=O,
-      y=mg_ca,
-      col=specimen)+
-  geom_point()+
-  xlim(-3,2)+
-  ylim(0.2,0.55)+
-  geom_smooth(method = "lm")
-
-
-
-C16_aligned %>%
-  mutate(specimen="C16") %>% 
-  rbind(C17_aligned %>% mutate(specimen="C17") ) %>% 
-  pivot_wider(names_from = "proxy",
-              values_from = "value") %>%
-  filter(x<30) %>% 
-  ggplot()+
-  aes(x=O,
-      y=mg_ca,
-      col=specimen)+
-  geom_point()+
-  xlim(-3,2)+
-  ylim(0.2,0.55)+
-  geom_smooth(method = "lm") + 
-  ggtitle("",subtitle="removing the later points (x<30) to adjust for time averaged isotope samples")
-
-
-```
 
