@@ -6,7 +6,10 @@ output: pdf_document
 ---
 
 # Libraries 
-```{r}
+```{r, echo=FALSE}
+
+knitr::opts_chunk$set(echo=FALSE)
+  
 {
   pacman::p_load(
     here,
@@ -14,7 +17,8 @@ output: pdf_document
     tidyverse,
     cowplot,
     patchwork,
-    RColorBrewer) 
+    RColorBrewer,
+    dtw) 
   
   theme_set(theme_cowplot())
 }
@@ -135,7 +139,8 @@ Cella <- full_join(C16,C17,by="sample_seq") %>%
 
 ```
 
-
+# Plots
+## Basic data
 ```{r}
 Cella %>% 
   ggplot()+
@@ -147,6 +152,110 @@ Cella %>%
   )+
   geom_path()+
   geom_point()
+
+```
+
+## Dynamic Time Warping
+```{r}
+
+SeqC16_O <- Cella %>% 
+  filter(element=="O") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C16) %>% 
+    na.omit()
+  
+SeqC17_O <- Cella %>% 
+  filter(element=="O") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C17) %>% 
+  na.omit()
+
+alignment <- dtw(SeqC16_O,SeqC17_O,
+                 keep=TRUE,
+                 step.pattern=symmetric2)
+           
+plot(alignment,
+     type = "twoway",
+     offset = 3)
+```
+
+#### Add new x-values
+
+```{r}
+Al_C16_O <- SeqC16_O %>% #[alignment$index1] %>% 
+  as_tibble() %>% 
+  cbind(x=1:43) %>% 
+  mutate(specimen="C16")
+  
+Al_C17_O <- SeqC17_O [alignment$index2] %>% 
+  as_tibble() %>% 
+  cbind(x=alignment$index1) %>% 
+    mutate(specimen="C17")
+
+O_aligned <- rbind(Al_C16_O,Al_C17_O) %>% 
+  group_by(x,specimen) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(specimen,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x))
+
+O_aligned %>% 
+  rename(O=value) %>% 
+  ggplot()+
+  aes(x=x,
+      y=O,
+      linetype=specimen)+
+  geom_line()
+
+# rm(SeqC16,SeqC17,Al_C16,Al_C17,alignment)
+
+```
+
+#### Adding d13C values to check alignment
+```{r}
+
+Al_C16_C <- Cella %>% 
+  filter(element=="C") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C16) %>% 
+  na.omit() %>% 
+  as_tibble() %>% 
+  cbind(x=1:43) %>% 
+  mutate(specimen="C16")
+  
+SeqC17_C <- Cella %>% 
+  filter(element=="C") %>% 
+  pivot_wider(names_from = specimen,
+              values_from = VPDB) %>% 
+  pull(C17) %>% 
+  na.omit()
+
+Al_C17_C <- SeqC17_C [alignment$index2] %>% 
+  as_tibble() %>% 
+  cbind(x=alignment$index1) %>% 
+    mutate(specimen="C17")
+
+
+C_aligned <- rbind(Al_C16_C,Al_C17_C) %>% 
+  group_by(x,specimen) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(specimen,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x))
+
+C_aligned %>% 
+  rename(C=value,) %>% 
+  ggplot()+
+  aes(x=x,
+      y=C,
+      linetype=specimen)+
+  geom_line()
+
 
 ```
 
