@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
   
 {
   pacman::p_load(
-    here,
+    here,ggx,
     janitor,
     tidyverse,
     cowplot,ShellChron,
@@ -132,6 +132,8 @@ Cella <- full_join(C16,C17,by="sample_seq") %>%
   separate(element, into=c("element","specimen")) %>% 
   mutate(specimen=if_else(specimen=="x","C16","C17"))
 
+# write_csv(Cella,here("data","Cella.csv"))
+
 ```
 
 # Plots
@@ -182,7 +184,7 @@ OmapC16 <- Cella %>%
 
   
 
-MgCamapC16 <- C16Trace_df %>%
+x <- C16Trace_df %>%
   filter(dist<5.5) %>% 
   ggplot() +
   aes(x = dist,
@@ -317,6 +319,7 @@ ggplot()+
 
 Al_C16_O_map/Al_C16_mg_ca_map
 
+
 ```
 
 \newpage
@@ -332,7 +335,7 @@ SeqC17_O <- C17 %>%
   pull(O)
   
 SeqC17_mg_ca <- C17TraceB_df %>% 
-    filter(dist<6) %>% 
+    filter(dist<5.2) %>% 
     mutate(mg_ca=scale(mg_ca)) %>% 
   pull(mg_ca) 
 
@@ -356,7 +359,7 @@ Al_C17_O <- C17 %>%
   select(x,value,proxy)
   
 Al_C17_mg_ca <- C17TraceB_df %>%
-  filter(dist<6) %>%
+  filter(dist<5.2) %>%
   pull(mg_ca) %>%
   .[alignment_C17$index2] %>% 
   as.data.frame() %>% 

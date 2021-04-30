@@ -1,0 +1,169 @@
+---
+title: "Comparison of SST and Chlorophyll"
+output: pdf_document
+---
+
+# Libraries 
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+{
+  pacman::p_load(
+    here,
+    janitor,
+    tidyverse,
+    cowplot,ggx,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+```
+
+# Data
+
+```{r}
+
+#Chlorophyll data
+Chlor <- read.csv(here("data","chlorophyll.csv")) %>% 
+  mutate(date=as.Date(date))
+
+#SST data
+SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
+  clean_names() %>%
+  separate(day, into = c("day", "month"), extra = "drop") %>%
+  pivot_longer(names_to = "year",
+               values_to = "SST",
+               cols = starts_with("x")) %>%
+  unite(c("year", "month", "day"), col = "date", sep = "/") %>%
+  mutate(date = gsub("x", "", date),
+         date = as.Date(date)) %>% 
+  arrange(date)
+
+
+#Oxygen Isotopes
+Cella <- read.csv(here("data","Cella.csv"))
+
+# Mg/Ca data
+C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>% 
+  rename(y=X1,
+         x=X2,
+         z=X3,
+         dist=X4,
+         mg_ca=X5,
+         st_dev=X6)
+
+C17Trace_df <- read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
+  rename(y=X1,
+         x=X2,
+         z=X3,
+         dist=X4,
+         mg_ca=X5,
+         st_dev=X6)
+
+```
+
+
+
+```{r Chlorophyll and SST data plot}
+SST_plot <- 
+SST %>% 
+  ggplot() +
+  aes(date,SST)+
+  geom_line()
+
+
+Chlor_plot <- 
+Chlor %>% 
+  filter(chlorophyll<10
+  # date>"2016-01-01"
+  ) %>%
+  mutate(chlorophyll1 = zoo::na.fill(chlorophyll,"extend"),
+         chlorophyll2 = zoo::rollmean(chlorophyll1, k = 10, fill = NA)) %>% 
+  ggplot() +
+  aes(date,chlorophyll2)+
+  geom_line(aes(y=chlorophyll),col="grey80")+
+  geom_line()
+
+SST_plot/Chlor_plot
+
+```
+
+
+#                                 By Month
+```{r Monthly changes of Chlorophyll and SST}
+
+Month_Chlor_plot <- 
+  Chlor %>% 
+  filter(chlorophyll<10
+  # date>"2016-01-01"
+  ) %>%
+  mutate(chlorophyll1 = zoo::na.fill(chlorophyll,"extend"),
+         chlorophyll2 = zoo::rollmean(chlorophyll1, k = 10, fill = NA)) %>% 
+  select(date,chlorophyll1) %>% 
+  mutate(month = format(date, '%m')) %>%
+  group_by(month) %>%
+  summarise(meanChlor = mean(chlorophyll1),
+            stdevChlor = sd(chlorophyll1)) %>% 
+  ggplot()+
+  aes(month,meanChlor,group=1)+
+  geom_line(alpha=0.2)+
+  geom_ribbon(aes(ymin=meanChlor-stdevChlor,ymax=meanChlor+stdevChlor),alpha=0.2)+
+    coord_cartesian(ylim=c(0, 3))
+
+Month_SST_plot <-
+    SST %>% 
+    mutate(month = format(date, '%m')) %>%
+  group_by(month) %>%
+  summarise(meanSST = mean(SST),
+            stdevSST = sd(SST)) %>% 
+  na.omit() %>% 
+      ggplot()+
+  aes(month,meanSST,group=1)+
+  geom_line(alpha=0.2)+
+  geom_ribbon(aes(ymin=meanSST-stdevSST,ymax=meanSST+stdevSST),alpha=0.2)+
+    coord_cartesian(ylim=c(10, 20))
+  
+  Month_Chlor_plot/Month_SST_plot
+
+```
+
+
+```{r Correlation of monthly data}
+
+Corr <- 
+Chlor %>% 
+  filter(chlorophyll<10
+  # date>"2016-01-01"
+  ) %>%
+  mutate(chlorophyll1 = zoo::na.fill(chlorophyll,"extend")) %>% 
+  select(date,chlorophyll1) %>% 
+  full_join(SST,by="date") %>% 
+  mutate(month = format(date, '%m')) %>%
+  na.omit() %>% 
+  group_by(month) %>%
+  summarise(meanSST = mean(SST),
+            meanChlor = mean(chlorophyll1))
+
+R_Sq <-   summary(lm(meanSST~meanChlor,data=Corr))[[8]]
+
+Corr %>% 
+  ggplot()+
+  aes(meanSST,meanChlor)+
+  geom_point()+
+  geom_smooth(se=FALSE,method='lm',col="grey80")+
+  ylim(0,3)+xlim(10,20)+
+  annotate("text",label=paste("R Square=",round(R_Sq,2)),x=11,y=3)
+
+```
+
+
+
+
+
+
+
+
+
+
+

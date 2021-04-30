@@ -1,0 +1,96 @@
+---
+output: pdf_document
+---
+
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+{
+  pacman::p_load(
+    here,
+    janitor,
+    tidyverse,
+    cowplot,ggx,viridis,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+```
+
+
+```{r Data}
+
+C7_T <- read_delim(
+  "data/C7_MgTrace_30.txt",
+  "\t",
+  escape_double = FALSE,
+  col_names = FALSE,
+  trim_ws = TRUE
+) %>% 
+  rename(x=X1,y=X2,z=X3,mg_ca=X4,sd=X5)%>% 
+  mutate(dist=seq(0,5.91,by=0.03)) # length of trace
+
+C7_M <- read_delim(
+  "data/C7_MgMap_50.txt",
+  "\t",
+  escape_double = FALSE,
+  col_names = FALSE,
+  trim_ws = TRUE
+) %>% 
+  rename(x=X1,y=X2,z=X3,mg_ca=X4) %>% 
+  select(-X5,-z)
+
+```
+
+
+
+```{r}
+
+C7_M %>% 
+  filter(x>13800&x<14000) %>% 
+  mutate(y=round(y,-2)) %>% 
+  group_by(y) %>% 
+  summarise(mg_ca=mean(mg_ca),
+            sd=sd(mg_ca)) %>% 
+  mutate(y=y/1000) %>% 
+  ggplot() +
+  aes(y,
+      mg_ca,
+      # col = log(mg_ca)
+      ) +
+  geom_path()+
+  geom_point() #+
+  # scale_color_viridis(option = "G",
+  #                     begin = 0.01) +
+  # geom_path(data = C7_T,
+  #           aes(x = x, y = y),
+  #           col = "red",
+  #           linetype="dashed",
+  #           size=0.7)+
+  # coord_fixed() +
+  # scale_x_continuous(breaks=c(13000,15000))
+
+
+C7_T %>% 
+  ggplot()+
+  aes(dist,mg_ca)+
+  geom_line(show.legend = FALSE)+
+  xlab("Distance to Edge [mm]")+
+  ylab("Mg/Ca ratio")
+
+df <-  tibble::tribble(
+      ~x,    ~y,   ~mg_ca,
+  14706, 2839, 0.381695,
+  14675, 2880,   0.3673,
+  14643, 2922, 0.397345,
+  14612, 2963,  0.38444,
+  14581, 3005, 0.348379,
+  14549, 3046, 0.413543,
+  14518, 3087, 0.422341,
+  14487, 3129, 0.425183,
+  14456, 3170,  0.41884,
+  14424, 3211, 0.410218
+  )
+```
+

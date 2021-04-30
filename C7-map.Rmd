@@ -1,0 +1,255 @@
+---
+output: pdf_document
+---
+
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+{
+  pacman::p_load(
+    here,
+    janitor,
+    tidyverse,
+    cowplot,ggx,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+```
+
+```{r fig.height=6, fig.width=4}
+C7_M <- read_delim(
+  "data/C7_MgMap_50.txt",
+  "\t",
+  escape_double = FALSE,
+  col_names = FALSE,
+  trim_ws = TRUE
+) %>% 
+  rename(x=X1,y=X2,z=X3,mg_ca=X4) %>% 
+  select(-X5,-z)
+
+C7_M %>% 
+  ggplot()+
+  aes(x,y,col=mg_ca)+
+  geom_point()+
+  coord_fixed()+
+  scale_x_continuous(breaks=c(13000,15000,17000))+
+  scale_color_viridis_c(option="G")+
+  #scale bar
+  annotate("rect",xmin=16000,xmax=17000,ymin=11000,ymax=11200)+
+  annotate("text",x=16500,y=11500,label="1 mm")+
+  #years
+  annotate("text",x=16700,y=8500,label="Year 1")+
+  annotate("text",x=16700,y=7500,label="Year 2")+
+  annotate("text",x=16700,y=6500,label="Year 3")+
+  annotate("text",x=16700,y=3800,label="Year 4")+
+  annotate("segment",x=16000,y=8500,yend=8500,xend=13900,arrow = arrow(angle = 20, length = unit(0.4,"cm")))+
+  annotate("segment",x=16000,y=7500,yend=7500,xend=14000,arrow = arrow(angle = 20, length = unit(0.4,"cm")))+
+  annotate("segment",x=16000,y=6500,yend=6500,xend=14000,arrow = arrow(angle = 20, length = unit(0.4,"cm")))+
+  annotate("segment",x=16000,y=3800,yend=3800,xend=14100,arrow = arrow(angle = 20, length = unit(0.4,"cm")))+
+
+  ggtitle("Elemental map",subtitle="Specimen C7")
+
+```
+
+# One Segment 200 µm
+```{r}
+C7_M_r <- C7_M %>% 
+  select(x,y) %>% 
+  Rotation(angle = 5*pi/180) %>% 
+  cbind(C7_M$mg_ca)
+
+
+plot(C7_M_r,col=pal(10)[as.numeric(cut(C7_M$mg_ca,breaks = 10))],pch = 20,asp=1)
+
+Seg200 <- C7_M_r %>%
+  as_tibble() %>% 
+  filter(V1>13300&V1<13500) %>%
+  filter(V2>4500&V2<11500) %>% 
+  # mutate(seg="A") %>% 
+  rename(x=V1,y=V2,mg_ca=V3)
+
+Loc200 <- 
+Seg200 %>% 
+  ggplot()+
+  aes(x,y)+
+  geom_point(data=as_tibble(C7_M_r),aes(V1,V2,col=V3),inherit.aes = FALSE,show.legend = FALSE)+
+  geom_point(col="red")+
+  xlim(12000,15000)+
+  coord_fixed()
+  
+```
+
+```{r}
+
+P200 <- 
+Seg200 %>% 
+  mutate(yr50=round(y/50)*50,
+         dist=yr50-11950) %>% 
+  group_by(dist) %>%
+  summarise(sd=sd(mg_ca),
+            n=n(),
+            mg_ca=mean(mg_ca)
+            ) %>%
+  ggplot()+
+  aes(x=dist,y=mg_ca)+
+  geom_ribbon(aes(ymin=mg_ca-sd,ymax=mg_ca+sd),fill="gray90")+
+  geom_path()+
+  ggtitle("200 µm sample path")
+
+
+
+
+
+```
+
+
+
+# One Segment 100 µm
+```{r}
+C7_M_r <- C7_M %>% 
+  select(x,y) %>% 
+  Rotation(angle = 5*pi/180) %>% 
+  cbind(C7_M$mg_ca)
+
+
+plot(C7_M_r,col=pal(10)[as.numeric(cut(C7_M$mg_ca,breaks = 10))],pch = 20,asp=1)
+
+Seg100 <- C7_M_r %>%
+  as_tibble() %>% 
+  filter(V1>13350&V1<13450) %>%
+  filter(V2>4500&V2<11500) %>% 
+  # mutate(seg="A") %>% 
+  rename(x=V1,y=V2,mg_ca=V3)
+
+Loc100 <- 
+Seg100 %>% 
+  ggplot()+
+  aes(x,y)+
+  geom_point(data=as_tibble(C7_M_r),aes(V1,V2,col=V3),inherit.aes = FALSE,show.legend = FALSE)+
+  geom_point(col="red")+
+  xlim(12000,15000)+
+  coord_fixed()
+  
+```
+
+```{r}
+
+P100 <- 
+Seg100 %>% 
+  mutate(yr50=round(y/50)*50,
+         dist=(yr50-5150)/1000) %>% 
+  group_by(dist) %>%
+  summarise(sd=sd(mg_ca),
+            n=n(),
+            mg_ca=mean(mg_ca)
+            ) %>%
+  ggplot()+
+  aes(x=dist,y=mg_ca)+
+  geom_ribbon(aes(ymin=mg_ca-sd,ymax=mg_ca+sd),fill="gray90")+
+  geom_path()+
+  ggtitle("100 µm sample path")
+
+
+Seg100
+
+```
+
+```{r}
+
+Loc200+Loc100+P200+P100+plot_layout(heights=c(2,8))
+
+
+```
+
+
+
+# Many Segments
+```{r}
+C7_M_r <- C7_M %>% 
+  select(x,y) %>% 
+  Rotation(angle = 40*pi/180) %>% 
+  cbind(C7_M$mg_ca)
+
+
+plot(C7_M_r,col=pal(10)[as.numeric(cut(C7_M$mg_ca,breaks = 10))],pch = 20,asp=1)
+
+SegA <- C7_M_r %>%
+  as_tibble() %>% 
+  filter(V2>15300&V2<16800) %>%
+  filter(V1>5100&V1<5300) %>% 
+  mutate(seg="A")
+
+
+SegB <- C7_M_r %>%
+  as_tibble() %>% 
+  filter(V2>13500&V2<15500) %>%
+  filter(V1>6200&V1<6400) %>% 
+  mutate(seg="B")
+
+
+SegC <- C7_M_r %>%
+  as_tibble() %>% 
+  filter(V2>12600&V2<13600) %>%
+  filter(V1>7000&V1<7200) %>% 
+    mutate(seg="C")
+
+
+
+SegD <- C7_M_r %>%
+  as_tibble() %>% 
+  filter(V2>11800&V2<12700) %>%
+  filter(V1>7800&V1<8000) %>% 
+    mutate(seg="D")
+
+     
+Segs <- rbind(SegA,SegB,SegC,SegD) %>% 
+     rename(x=V1,y=V2,mg_ca=V3) %>% 
+      mutate(seg=as.factor(seg))
+
+rm(SegA,SegB,SegC,SegD)
+     
+Segs %>% 
+  ggplot()+
+  aes(x,y)+
+  geom_point(data=as_tibble(C7_M_r),aes(V1,V2,col=V3),inherit.aes = FALSE,show.legend = FALSE)+
+  geom_point()
+  
+```
+
+```{r}
+
+
+Segs %>% 
+  mutate(yr50=round(y/50)*50,
+         dist=yr50-11950) %>% 
+  # group_by(dist) %>% 
+  # summarise(sd=sd(mg_ca),
+  #           n=n(),
+  #           mg_ca=mean(mg_ca)
+  #           ) %>% 
+  ggplot()+
+  aes(x=dist,y=mg_ca,col=seg)+
+  # geom_ribbon(aes(ymin=mg_ca-sd,ymax=mg_ca+sd),fill="gray90")+
+  geom_path()
+
+
+
+
+
+
+Segs %>% 
+  mutate(yr50=round(y/50)*50,
+         dist=yr50-11950) %>% 
+  group_by(dist) %>% 
+  summarise(sd=sd(mg_ca),
+            n=n(),
+            mg_ca=mean(mg_ca)
+            ) %>% 
+  ggplot()+
+  aes(x=dist,y=mg_ca)+
+  geom_ribbon(aes(ymin=mg_ca-sd,ymax=mg_ca+sd),fill="gray90")+
+  geom_path()
+```
+

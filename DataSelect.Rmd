@@ -1,0 +1,227 @@
+---
+output: pdf_document
+---
+
+# Libraries 
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+{
+  pacman::p_load(
+    here,sf,ggmap,sp,spdep,
+    janitor,
+    tidyverse,
+    cowplot,ggx,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+```
+
+# Data
+
+```{r}
+C7_M <- read_delim(
+  "data/C7_MgMap_50.txt",
+  "\t",
+  escape_double = FALSE,
+  col_names = FALSE,
+  trim_ws = TRUE
+) %>% 
+  rename(x=X1,y=X2,z=X3,mg_ca=X4) %>% 
+  select(-X5,-z) #%>% 
+  # st_as_sf(coords = c("x","y"))
+
+
+```
+
+
+
+```{r}
+pal <- colorRampPalette(c('black','deepskyblue4','aquamarine'))
+# MgCa3 <- pal(10)[as.numeric(cut(C7_M$mg_ca,breaks = 10))]
+
+plot(C7_M[,1:2],col=pal(10)[as.numeric(cut(C7_M$mg_ca,breaks = 10))],pch = 20,asp=1)
+
+C7_M %>% 
+  select(x,y) %>% 
+  Rotation(angle = 40*pi/180) %>% 
+  plot(col=pal(10)[as.numeric(cut(C7_M$mg_ca,breaks = 10))],pch = 20,asp=1)
+
+# #
+# C7_M %>%
+#   ggplot()+
+#   geom_sf(aes(col=mg_ca))
+# # 
+# quartz(title="shell",width=5,height=5)
+
+line <- locator() %>% 
+  # as.data.frame() %>% 
+  # as.matrix() %>%
+  SpatialPoints() %>% 
+  as("SpatialLines")
+  # st_linestring()
+  
+  lines(line,col="red")
+
+
+```
+
+
+```{r Interpolated Points}
+L <- SDraw::lineLength(line)
+
+InPo <- 	
+gInterpolate(line, seq(0,L,by=50)) 
+
+points(InPo)
+
+
+temp1 <- C7_M[,1:2] %>% SpatialPoints() %>% st_as_sf()
+temp2 <- line %>% st_as_sf()
+# temp2 <- InPo %>% st_as_sf()
+distances <- st_distance(temp1)#,temp2) %>% 
+  as_tibble() ##%>% 
+  # rename(distances=V1)
+rm(temp1,temp2)
+
+
+C7_M_selected <-
+  C7_M %>% 
+  cbind(distances) %>% 
+  filter(distances < 100) %>% 
+  select(x,y) %>% 
+  SpatialPoints() %>% 
+  st_as_sf()
+
+nearpoints <- 
+  InPo %>% 
+  st_as_sf() %>%
+  st_nearest_points(C7_M_selected,.) %>% #here is the problem
+  unlist() %>%
+  matrix(., nrow=nrow(C7_M_selected)*nrow(InPo %>% as_tibble)/4, ncol=4,byrow = TRUE) %>%
+  as_tibble() %>% 
+  rename(y=V4,x=V2) %>% 
+  unite("inpo",c(1,3),remove=TRUE,sep = "_") %>% 
+  full_join(InPo %>% as_tibble() %>% mutate(order=row_number()) %>% unite("inpo",c(1,2),remove=TRUE,sep = "_"), by="inpo") %>% 
+  unite("selected",c(2,3),remove=FALSE,sep = "_") %>% 
+  left_join(C7_M %>% cbind(distances) %>% filter(distances < 100) %>% unite("selected",c(1,2),remove=TRUE,sep = "_"), by="selected") %>% 
+  select(-selected,-inpo,-distances) #%>% 
+  # group_by(order) %>% 
+  # summarise(mg_ca =mean(mg_ca)) %>% 
+  # mutate(dist=order*0.05)
+
+
+
+
+
+
+```
+
+```{r Try this next}
+ext <- raster::extent(5200000, 6046000, 7234000, 7756000)
+r <- raster::raster(ext, ncol=252, nrow=156) # ~3 km resolution
+r[] <- runif(raster::ncell(r)) * 10
+
+pts <- raster::sampleRandom(r, 500, na.rm=TRUE, sp=TRUE, cells=T) #%>%
+
+
+
+# https://gis.stackexchange.com/questions/351085/r-find-n-closest-points-to-each-point-in-spatialpointsdataframe
+# convert points to sf objects
+pts <- st_as_sf(pts)
+
+# creates a matrix of distances between the points
+dist_matrix <- st_distance(temp1,temp2)
+
+# replaces 0s with NA
+diag(dist_matrix) <- NA
+
+# convert matrix to data frame and set column and row names
+dist_matrix <- data.frame(dist_matrix)
+names(dist_matrix) <- pts$cell
+rownames(dist_matrix) <- pts$cell
+
+# find the 5 nearest stations and create new data frame
+library(tidyr)
+library(dplyr)
+
+near <- dist_matrix %>% 
+  mutate(ID=rownames(.)) %>% 
+  gather('closest','dist',-ID) %>% 
+  filter(!is.na(dist)) %>% 
+  group_by(ID) %>% 
+  arrange(dist) %>% 
+  slice(1:5) %>% 
+  mutate(dist_rank=1:5)
+
+
+```
+
+
+
+
+
+```{r Distances, eval=FALSE, include=FALSE}
+
+distances <- st_distance(C7_M,line)
+
+nearpoints <- st_nearest_points(line,C7_M)
+  
+
+np2 <- st_nearest_points(nearpoints,line) %>% 
+  unlist() %>%
+  matrix(., 6184, 2) %>%
+  as_tibble() %>%
+  mutate(order=row_number()) %>% 
+  rename(x2 = V1, y2 = V2)
+
+
+
+C7_M_select <- C7_M %>%
+  mutate(
+    x = unlist(map(C7_M$geometry, 1)),
+    y = unlist(map(C7_M$geometry, 2))
+    ) %>%
+  cbind(distances, np2) %>%
+  filter(distances < 100) %>% 
+  # mutate(order = round(row_number(), -1)) %>% 
+    # arrange(order) %>% 
+  mutate(order = round(order,0))
+  # group_by(order) %>%
+  # summarise(mg_ca=mean(mg_ca),
+  #           y=mean(y))
+
+C7_M_select %>% 
+  ggplot()+
+  aes(x=order,y=mg_ca)+
+  # geom_ribbon(aes(x=order,ymax=mg_ca+0.01,ymin=mg_ca-0.01))
+geom_line()
+    geom_point()
+    # coord_fixed()#+
+
+  # geom_smooth(span=0.05,col="red")
+
+
+
+C7_M %>%
+  mutate(
+    x = unlist(map(C7_M$geometry, 1)),
+    y = unlist(map(C7_M$geometry, 2))
+    ) %>%
+  cbind(distances, np2) %>%
+  filter(distances < 105) %>%     
+  arrange(order) %>% 
+  # filter(y>8000&y<8500) %>%
+    # mutate(order = round(order,-1)) %>%
+  ggplot()+
+  aes(x=x,y=y,col=order)+
+  geom_point(size=5)+
+  scale_colour_viridis_c()+
+  coord_fixed()#+
+  # ylim(8000,8500)+
+  # xlim(14000,14500)
+
+
+```
