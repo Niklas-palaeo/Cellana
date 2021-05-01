@@ -72,7 +72,7 @@ p_map <-
     ggtitle("Location of traceline") +
     viridis::scale_color_viridis(option = "G") +
     labs(col = "Mg/Ca") +
-    scale_x_continuous(breaks=c(13,14,15))+
+    # scale_x_continuous(breaks=c(13,14,15))+# doesn't work for each shell
     coord_fixed()
   
   
@@ -89,7 +89,7 @@ p_trace <-
     geom_line(col="firebrick2")+
   xlab("Distance to edge [mm]")+
   ylab("Mg/Ca")+
-  ylim(0.15,0.35)+
+  # ylim(min(map$mg_ca),max(map$mg_ca))+
     xlim(0,NA)+
     ggtitle("Mg/Ca ratios along traceline",subtitle=paste("within ",buffer," microns range"))
   
