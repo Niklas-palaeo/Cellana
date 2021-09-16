@@ -91,7 +91,7 @@ p_trace <-
   ylab("Mg/Ca")+
   # ylim(min(map$mg_ca),max(map$mg_ca))+
     xlim(0,NA)+
-    ggtitle("Mg/Ca ratios along traceline",subtitle=paste("within ",buffer," microns range"))
+    ggtitle("Mg/Ca ratios along traceline",subtitle=paste("within ",buffer," millimetres range"))
   
   
 p <-   p_map+ plot_spacer()+p_trace+plot_layout(widths=c(0.2,0.1,0.7))

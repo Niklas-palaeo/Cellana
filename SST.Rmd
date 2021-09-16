@@ -39,6 +39,15 @@ SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
   arrange(date)
 
 
+SST_O <- SST %>% 
+  mutate(date=as.numeric(date)-16071) %>% #needs numeric value for matrix
+  as.matrix() %>% # next function needs matrix
+  d18O_model(d18Ow=0.5,mineral="calcite") %>% # δ18Owater is 0.5 based on δ18O=( 0.25- S)−8.2 and salinity (S) is around 35 psu.
+  as.tibble() %>% 
+  rename(date=V1,d18O=V2) %>% 
+  mutate(date=as.Date.numeric(date,origin = "2014-01-02")) #put dates back
+
+
 
 C16Trace_df <- read.csv(here("data","C16.csv")) %>% 
                 filter(sample_mode=="trace")
