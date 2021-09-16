@@ -163,13 +163,7 @@ Cella %>%
 
 ```{r}
 
-C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>% 
-  rename(y=X1,
-         x=X2,
-         z=X3,
-         dist=X4,
-         mg_ca=X5,
-         st_dev=X6)
+C16Trace_df <- read.csv(here("data","C16.csv")) %>% filter(sample_mode=="trace")
 
 OmapC16 <- Cella %>% 
   filter(specimen=="C16",
@@ -184,7 +178,7 @@ OmapC16 <- Cella %>%
 
   
 
-x <- C16Trace_df %>%
+MgCamapC16 <- C16Trace_df %>%
   filter(dist<5.5) %>% 
   ggplot() +
   aes(x = dist,
@@ -203,13 +197,8 @@ OmapC16/MgCamapC16
 
 ```{r}
 
-C17TraceB_df <- read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
-  rename(y=X1,
-         x=X2,
-         z=X3,
-         dist=X4,
-         mg_ca=X5,
-         st_dev=X6)
+C17TraceB_df <- read.csv(here("data","C17.csv")) %>% 
+                           filter(sample_mode=="trace")
 
 OmapC17 <- Cella %>% 
   filter(specimen=="C17",
@@ -406,8 +395,24 @@ Al_C17_O_map/Al_C17_mg_ca_map
 
 # Correlation Graphs
 
-```{r}
+```{r function to extract p value}
 
+lmp <- function (modelobject) {
+    if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+    f <- summary(modelobject)$fstatistic
+    p <- pf(f[1],f[2],f[3],lower.tail=F)
+    attributes(p) <- NULL
+    return(p)
+}
+
+
+```
+
+
+
+
+```{r}
+# C16
 df_C16 <- C16_aligned %>%
   pivot_wider(names_from = "proxy",
               values_from = "value") %>% 
@@ -418,7 +423,13 @@ LM_C16 <- lm(O ~ mg_ca,
          )
 R2_C16 <- round(summary(LM_C16)[[8]],2)
 
+P_C16 <- ifelse(lmp(LM_C16)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
 
+Stat_C16 <- paste0("R²=", R2_C16,", ",P_C16)
+
+# C17
 df_C17 <- C17_aligned %>%
   pivot_wider(names_from = "proxy",
               values_from = "value") %>% 
@@ -428,6 +439,12 @@ LM_C17 <- lm(O ~ mg_ca,
          data=df_C17,
          )
 R2_C17 <- round(summary(LM_C17)[[8]],2)
+
+P_C17 <- ifelse(lmp(LM_C17)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
+
+Stat_C17 <- paste0("R²=", R2_C17,", ",P_C17)
 
 # C16_aligned %>%
 #   mutate(specimen = "C16") %>%
@@ -468,9 +485,9 @@ C16_aligned %>%
               linetype="dashed",
               size=0.5) +
   ylab("Mg/Ca Ratio") +
-  xlab("d18O VPDB")+
-  ggtitle("Correlation graph for C16 d18O and Mg/Ca",
-          subtitle = paste("R²=", R2_C16))
+  xlab(expression("δ" ^ "18" * "O [VPDB]"))+
+  ggtitle("C16",#"Correlation graph for C16 d18O and Mg/Ca",
+          subtitle = Stat_C16)
 
 C17_aligned %>%
   pivot_wider(names_from = "proxy",
@@ -487,7 +504,7 @@ C17_aligned %>%
               linetype="dashed",
               size=0.5) +
   ylab("Mg/Ca Ratio") +
-  xlab("d18O VPDB")+
-  ggtitle("Correlation graph for C17 d18O and Mg/Ca",
-          subtitle = paste("R²=", R2_C17))
+  xlab(expression("δ" ^ "18" * "O [VPDB]"))+
+  ggtitle("C17",#"Correlation graph for C17 d18O and Mg/Ca",
+          subtitle = Stat_C17)
 ```

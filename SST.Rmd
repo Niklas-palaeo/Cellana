@@ -40,31 +40,45 @@ SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
 
 
 
-C16Trace_df <- read_csv(here("data","C16Trace.csv"),col_names = FALSE) %>% 
-  rename(y=X1,
-         x=X2,
-         z=X3,
-         dist=X4,
-         mg_ca=X5,
-         st_dev=X6)
+C16Trace_df <- read.csv(here("data","C16.csv")) %>% 
+                filter(sample_mode=="trace")
 
-C17Trace_df <- read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
-  rename(y=X1,
-         x=X2,
-         z=X3,
-         dist=X4,
-         mg_ca=X5,
-         st_dev=X6)
+
+
+# 
+# ,col_names = FALSE) %>% 
+#   rename(y=X1,
+#          x=X2,
+#          z=X3,
+#          dist=X4,
+#          mg_ca=X5,
+#          st_dev=X6)
+
+C17Trace_df <- read.csv(here("data","C17.csv")) %>% 
+                filter(sample_mode=="trace")
+  
+  
+  # read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
+  # rename(y=X1,
+  #        x=X2,
+  #        z=X3,
+  #        dist=X4,
+  #        mg_ca=X5,
+  #        st_dev=X6)
 
 ```
 
 ```{r Plot SST+C16, fig.height=9, fig.width=8}
+
+
+
 SST_plot <- SST %>% 
   filter(date>"2014-01-01",
          date<"2017-06-02") %>% 
   ggplot()+
   aes(x=date,y=SST) +
   geom_line()+
+  ylab("SST ºC")+
   geom_vline(xintercept = as.numeric(as.Date("2014-02-25")), linetype=2)+
   geom_vline(xintercept = as.numeric(as.Date("2015-02-25")), linetype=2)+
   geom_vline(xintercept = as.numeric(as.Date("2016-02-10")), linetype=2)+
@@ -95,7 +109,7 @@ C16_O_plot <- Cella %>%
   geom_vline(xintercept = 28, linetype=2)+
   geom_vline(xintercept = 4, linetype=2)+
   ylim(-0.5,2.5)+
-  ylab("d18O")+
+  ylab(expression("δ" ^ "18" * "O [VPDB]"))+
   xlab("sample number")+
   scale_x_reverse()+
   scale_y_reverse()
@@ -111,7 +125,7 @@ C16_Mg_Ca_plot <-
   geom_path() +
   scale_x_reverse()+
   xlab("Distance to Edge [mm]")+
-  ylab("Mg/Ca Ratio")+
+  ylab("Mg/Ca ratio")+
   geom_vline(xintercept = 0.3, linetype=2)+
   geom_vline(xintercept = 3.5, linetype=2)+
   geom_vline(xintercept = 8.9, linetype=2)+
@@ -121,7 +135,7 @@ C16_Mg_Ca_plot <-
   alpha = .2)+
   annotate("text",x=1.3,y=0.49,label="extent of d18O record", alpha=.6)
 
-SST_plot/C16_O_plot/C16_Mg_Ca_plot+plot_annotation(title = "C16", subtitle="Comparison of SST, d18O, and Mg/Ca from shell specimen C16")
+SST_plot/C16_O_plot/C16_Mg_Ca_plot+plot_annotation(title = "C16")
 
 ```
 
@@ -138,7 +152,7 @@ C17_O_plot <- Cella %>%
   geom_vline(xintercept = 44, linetype=2)+
   geom_vline(xintercept = 51, linetype=2)+
   ylim(-0.5,2.5)+
-  ylab("d18O")+
+  ylab(expression("δ" ^ "18" * "O [VPDB]"))+
   xlab("sample number")+
   scale_x_reverse()+
   scale_y_reverse()
@@ -154,18 +168,18 @@ C17_Mg_Ca_plot <-
   geom_path() +
   scale_x_reverse()+
   xlab("Distance to Edge [mm]")+
-  ylab("Mg/Ca Ratio")+
+  ylab("Mg/Ca ratio")+
   geom_vline(xintercept = 0.8, linetype=2)+
   geom_vline(xintercept = 3.5, linetype=2)+
   geom_vline(xintercept = 8.6, linetype=2)+
   geom_vline(xintercept = 5.4, linetype=2)+
   geom_vline(xintercept = 4.7, linetype=2)+
-  annotate("rect", xmin = 0, xmax = 5.6, ymin = 0.25, ymax = 0.6,
+  annotate("rect", xmin = 0, xmax = 5.6, ymin = 0.25, ymax = 0.61,
   alpha = .2)+
-  annotate("text",x=1.3,y=0.65,label="extent of d18O record", alpha=.6)
+  annotate("text",x=1.8,y=0.65,label="extent of d18O record", alpha=.6)
 
 
 
-SST_plot/C17_O_plot/C17_Mg_Ca_plot+plot_annotation(title = "C17", subtitle="Comparison of SST, d18O, and Mg/Ca from shell specimen C17")
+SST_plot/C17_O_plot/C17_Mg_Ca_plot+plot_annotation(title = "C17")
 
 ```

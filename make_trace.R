@@ -42,7 +42,7 @@ make_trace<- function(map,buffer) {
     arrange(dist) %>% 
     slice(1) %>% 
     arrange(ID) %>% 
-    cbind(map) %>% 
+    cbind(map %>% select(x,y,mg_ca)) %>% 
     filter(dist<buffer)
   
   
