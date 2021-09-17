@@ -134,6 +134,11 @@ Cella <- full_join(C16,C17,by="sample_seq") %>%
 
 # write_csv(Cella,here("data","Cella.csv"))
 
+C16Trace_df <- read.csv(here("data","C16.csv")) %>% filter(sample_mode=="trace")
+
+C17TraceB_df <- read.csv(here("data","C17.csv")) %>% 
+                           filter(sample_mode=="trace")
+
 ```
 
 # Plots
@@ -243,9 +248,9 @@ OmapC17/MgCamapC17
 
 # Dynamic Time Warping and correlation graphs
 
-## Aligning C16 records
-
-### Warp data
+## Aligning d18O with Mg/Ca records
+### C16
+#### Warp data
 
 ```{r fig.height=4}
 
@@ -267,7 +272,7 @@ plot(alignment_C16,
      offset = 3)
 ```
 
-### Adjust data
+#### Adjust data
 
 ```{r}
 
@@ -326,9 +331,9 @@ Al_C16_O_map/Al_C16_mg_ca_map
 
 \newpage
 
-## Aligning C17 records
+###  C17
 
-### Warp data
+#### Warp data
 
 ```{r}
 
@@ -350,7 +355,7 @@ plot(alignment_C17,
      offset = 3)
 ```
 
-### Adjust data
+#### Adjust data
 
 ```{r}
 
@@ -406,10 +411,10 @@ Al_C17_O_map/Al_C17_mg_ca_map
 
 ```
 
-# Aligning SST_O data
+## Aligning SST_O data
 
 
-## C16
+### C16
 ```{r}
 SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
   clean_names() %>%
@@ -434,12 +439,12 @@ SST_O <- SST %>%
 
 ```
 
-### Warp data
+#### Warp data
 
 ```{r}
 
 SeqC16_O <- C16 %>% 
-  # mutate(O=scale(O)) %>% 
+  arrange(desc(row_number())) %>%
   pull(O)
   
 SeqSST_O <- SST_O %>% 
@@ -458,15 +463,16 @@ plot(alignment_C16,
      offset = 3)
 ```
 
-### Adjust data
+#### Adjust data
 
 ```{r}
 
 Al_C16_O <- C16 %>% 
-  mutate(x=1:43,
+  mutate(x=43:1,
          proxy="d18Os") %>% 
   rename(value=O) %>% 
   select(x,value,proxy)
+
   
 Al_C16_SST_O <- SST_O %>%
   filter(date>"2014-02-25",
@@ -518,7 +524,7 @@ Al_C16_O_plot/Al_C16_SST_O_plot
 
 
 
-## C17
+### C17
 ```{r}
 SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
   clean_names() %>%
@@ -543,12 +549,12 @@ SST_O <- SST %>%
 
 ```
 
-### Warp data
+#### Warp data
 
 ```{r}
 
 SeqC17_O <- C17 %>% 
-  # mutate(O=scale(O)) %>% 
+  arrange(desc(row_number())) %>% 
   pull(O)
   
 SeqSST_O <- SST_O %>% 
@@ -567,15 +573,17 @@ plot(alignment_C17,
      offset = 3)
 ```
 
-### Adjust data
+#### Adjust data
 
 ```{r}
 
 Al_C17_O <- C17 %>% 
-  mutate(x=1:46,
+  mutate(x=46:1,
          proxy="d18Os") %>% 
   rename(value=O) %>% 
-  select(x,value,proxy)
+  select(x,value,proxy) %>% 
+    arrange(desc(row_number()))
+
   
 Al_C17_SST_O <- SST_O %>%
   filter(date>"2014-02-25",
@@ -626,6 +634,224 @@ Al_C17_O_plot/Al_C17_SST_O_plot
 
 
 
+## Aligning SST_MgCa data
+
+
+### C16
+```{r}
+SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
+  clean_names() %>%
+  separate(day, into = c("day", "month"), extra = "drop") %>%
+  pivot_longer(names_to = "year",
+               values_to = "SST",
+               cols = starts_with("x")) %>%
+  unite(c("year", "month", "day"), col = "date", sep = "/") %>%
+  mutate(date = gsub("x", "", date),
+         date = as.Date(date)) %>% 
+  arrange(date)
+
+
+```
+
+#### Warp data
+
+```{r}
+
+SeqC16_mg_ca <- C16Trace_df %>% 
+  filter(dist<5.5) %>% 
+    arrange(desc(row_number())) %>%
+  mutate(mg_ca=scale(mg_ca)) %>% 
+  pull(mg_ca)
+
+SeqSST_MgCa <- SST %>% 
+  mutate(SST=scale(SST)) %>%
+  filter(date>"2014-02-25",
+         date<"2017-06-02") %>% 
+  pull(SST)
+
+
+alignment_C16_SST_MgCa <- dtw(SeqC16_mg_ca,SeqSST_MgCa,
+                     keep=TRUE,
+                     step.pattern=symmetric2)
+
+plot(alignment_C16_SST_MgCa,
+     type = "twoway",
+     offset = 10)
+```
+
+#### Adjust data
+
+```{r}
+
+Al_C16_MgCa_SST <- C16Trace_df %>%
+  filter(dist<5.5) %>% 
+  mutate(x=111:1,
+       proxy="mg_ca") %>% 
+  rename(value=mg_ca) %>% 
+  select(x,value,proxy)
+
+
+Al_C16_SST_MgCa <- SST %>%
+  filter(date>"2014-02-25",
+         date<"2017-06-02") %>% 
+  pull(SST) %>%
+  .[alignment_C16_SST_MgCa$index2] %>% 
+  as.data.frame() %>% 
+  clean_names() %>% 
+  rename(value=x) %>% 
+  cbind(x=alignment_C16_SST_MgCa$index1) %>% 
+  mutate(proxy="SST")
+
+
+C16_SST_MgCa_aligned <- rbind(Al_C16_MgCa_SST,Al_C16_SST_MgCa) %>% 
+  group_by(x,proxy) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.00001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x)) 
+
+
+Al_C16_MgCa_plot <- C16_SST_MgCa_aligned %>%
+  filter(proxy=="mg_ca") %>% 
+  ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+  ylab("Mg/Ca intensity ratio")+
+  ggtitle("")
+
+Al_C16_SST_MgCa_plot <- C16_SST_MgCa_aligned %>%
+  filter(proxy=="SST") %>% 
+  ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+  ylab("SST ºC")+
+  ggtitle("")
+
+
+
+
+Al_C16_MgCa_plot/Al_C16_SST_MgCa_plot
+``` 
+
+
+
+
+### C17
+```{r}
+SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
+  clean_names() %>%
+  separate(day, into = c("day", "month"), extra = "drop") %>%
+  pivot_longer(names_to = "year",
+               values_to = "SST",
+               cols = starts_with("x")) %>%
+  unite(c("year", "month", "day"), col = "date", sep = "/") %>%
+  mutate(date = gsub("x", "", date),
+         date = as.Date(date)) %>% 
+  arrange(date)
+
+
+SST_O <- SST %>% 
+  mutate(date=as.numeric(date)-16071) %>% #needs numeric value for matrix
+  as.matrix() %>% # next function needs matrix
+  d18O_model(d18Ow=0.5,mineral="calcite") %>% # δ18Owater is 0.5 based on δ18O=( 0.25- S)−8.2 and salinity (S) is around 35 psu.
+  as.tibble() %>% 
+  rename(date=V1,d18O=V2) %>% 
+  mutate(date=as.Date.numeric(date,origin = "2014-01-02")) #put dates back
+
+
+```
+
+#### Warp data
+
+```{r}
+
+SeqC17_mg_ca <- C17TraceB_df %>% 
+  filter(dist<5.2) %>% 
+  arrange(desc(row_number())) %>%
+  mutate(mg_ca=scale(mg_ca)) %>% 
+  pull(mg_ca) 
+
+SeqSST_MgCa <- SST %>% 
+  mutate(SST=scale(SST)) %>%
+  filter(date>"2014-02-25",
+         date<"2017-06-02") %>% 
+  pull(SST)
+
+
+alignment_C17_SST_MgCa <- dtw(SeqC17_mg_ca,SeqSST_MgCa,
+                              keep=TRUE,
+                              step.pattern=symmetric2)
+
+plot(alignment_C17_SST_MgCa,
+     type = "twoway",
+     offset = 10)
+```
+
+#### Adjust data
+
+```{r}
+
+Al_C17_MgCa_SST <- C17TraceB_df %>%
+  filter(dist<5.2) %>%
+   mutate(x=105:1,
+         proxy="mg_ca") %>% 
+  rename(value=mg_ca) %>% 
+  select(x,value,proxy)
+
+Al_C17_SST_MgCa <- SST %>%
+  filter(date>"2014-02-25",
+         date<"2017-06-02") %>% 
+  pull(SST) %>%
+  .[alignment_C17_SST_MgCa$index2] %>% 
+  as.data.frame() %>% 
+  clean_names() %>% 
+  rename(value=x) %>% 
+  cbind(x=alignment_C17_SST_MgCa$index1) %>% 
+  mutate(proxy="SST")
+
+
+C17_SST_MgCa_aligned <- rbind(Al_C17_MgCa_SST,Al_C17_SST_MgCa) %>% 
+  group_by(x,proxy) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x)) 
+
+
+Al_C17_MgCa_plot <- C17_SST_MgCa_aligned %>%
+  filter(proxy=="mg_ca") %>% 
+  ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+  ylab("Mg/Ca intensity ratio")+
+  ggtitle("")
+
+Al_C17_SST_MgCa_plot <- C17_SST_MgCa_aligned %>%
+  filter(proxy=="SST") %>% 
+  ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+  ylab("ºC")+
+  ggtitle("")
+
+
+
+
+Al_C17_MgCa_plot/Al_C17_SST_MgCa_plot
+``` 
+
+
+
 
 # Correlation Graphs
 
@@ -643,8 +869,8 @@ lmp <- function (modelobject) {
 ```
 
 
-
-
+## d18O to Mg/Ca
+### C16
 ```{r}
 # C16
 df_C16 <- C16_aligned %>%
@@ -662,23 +888,6 @@ P_C16 <- ifelse(lmp(LM_C16)<0.001,"p<0.001",
                        ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
 
 Stat_C16 <- paste0("R²=", R2_C16,", ",P_C16)
-
-# C17
-df_C17 <- C17_aligned %>%
-  pivot_wider(names_from = "proxy",
-              values_from = "value") %>% 
-  select(O,mg_ca)
-
-LM_C17 <- lm(O ~ mg_ca,
-         data=df_C17,
-         )
-R2_C17 <- round(summary(LM_C17)[[8]],2)
-
-P_C17 <- ifelse(lmp(LM_C17)<0.001,"p<0.001",
-                ifelse(lmp(LM_C17)<0.01,"p<0.01",
-                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
-
-Stat_C17 <- paste0("R²=", R2_C17,", ",P_C17)
 
 C16_aligned %>%
   pivot_wider(names_from = "proxy",
@@ -698,6 +907,29 @@ C16_aligned %>%
   xlab(expression("δ" ^ "18" * "O [VPDB]"))+
   ggtitle("C16",#"Correlation graph for C16 d18O and Mg/Ca",
           subtitle = Stat_C16)
+```
+
+### C17
+
+```{r}
+
+df_C17 <- C17_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  select(O,mg_ca)
+
+LM_C17 <- lm(O ~ mg_ca,
+         data=df_C17,
+         )
+R2_C17 <- round(summary(LM_C17)[[8]],2)
+
+P_C17 <- ifelse(lmp(LM_C17)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
+
+Stat_C17 <- paste0("R²=", R2_C17,", ",P_C17)
+
+
 
 C17_aligned %>%
   pivot_wider(names_from = "proxy",
@@ -721,7 +953,7 @@ C17_aligned %>%
 
 
 
-## SST correlations
+## SST to d18O correlations
 ### C16
 ```{r}
 # C16
@@ -760,7 +992,7 @@ C16_SST_O_aligned %>%
   ylab(expression("δ" ^ "18" * "Ow [VPDB]")) +
   xlab(expression("δ" ^ "18" * "Os [VPDB]"))+
   ggtitle("C16",#"Correlation graph for C17 d18O and Mg/Ca",
-          subtitle = Stat_C17_SST_O)
+          subtitle = Stat_C16_SST_O)
 
 
 
@@ -808,5 +1040,89 @@ C17_SST_O_aligned %>%
 
 
 
+```
+
+
+
+## Mg/Ca to SST
+### C16
+```{r}
+# C16
+df_C16 <- C16_SST_MgCa_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  select(SST,mg_ca)
+
+LM_C16 <- lm(SST ~ mg_ca,
+         data=df_C16,
+         )
+R2_C16 <- round(summary(LM_C16)[[8]],2)
+
+P_C16 <- ifelse(lmp(LM_C16)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
+
+Stat_C16 <- paste0("R²=", R2_C16,", ",P_C16)
+
+C16_SST_MgCa_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>%
+  ggplot() +
+  aes(x = SST,
+      y = mg_ca) +
+  geom_point() +
+  xlim(10,22) +
+  ylim(0.15, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+  ylab("Mg/Ca Ratio") +
+  xlab("SST ºC")+
+  ggtitle("C16",#"Correlation graph for C16 d18O and Mg/Ca",
+          subtitle = Stat_C16)
+```
+
+### C17
+
+```{r}
+
+df_C17 <- C17_SST_MgCa_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  select(SST,mg_ca)
+
+LM_C17 <- lm(SST ~ mg_ca,
+         data=df_C17,
+         )
+R2_C17 <- round(summary(LM_C17)[[8]],2)
+
+P_C17 <- ifelse(lmp(LM_C17)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
+
+Stat_C17 <- paste0("R²=", R2_C17,", ",P_C17)
+
+
+
+C17_SST_MgCa_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>%
+  ggplot() +
+  aes(x = SST,
+      y = mg_ca) +
+  geom_point() +
+  xlim(10,22) +
+  ylim(0.15, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+  ylab("Mg/Ca Ratio") +
+  xlab("SST ºC")+
+  ggtitle("C17",#"Correlation graph for C17 d18O and Mg/Ca",
+          subtitle = Stat_C17)
 ```
 
