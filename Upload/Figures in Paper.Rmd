@@ -1,0 +1,1099 @@
+---
+title: "Code for Figures in Manuscript"
+author: "F. King, A.L. Prendergast, E. Frost, G.L. Stannard, J. Garvey, R. Cosgrove, R. Drysdale, N. Hausmann"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+
+# Libraries 
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+{
+  pacman::p_load(
+    here,
+    janitor,
+    tidyverse,lubridate,dtw,
+    cowplot,ggx,viridis,ShellChron,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+
+# This function extracts statistical attributes
+lmp <- function (modelobject) {
+    if (class(modelobject) != "lm") stop("Not an object of class 'lm' ")
+    f <- summary(modelobject)$fstatistic
+    p <- pf(f[1],f[2],f[3],lower.tail=F)
+    attributes(p) <- NULL
+    return(p)
+}
+
+
+```
+
+# Data
+```{r}
+
+# Isotope data
+Isotopes <- read.csv(here("data","Isotope_data.csv"))
+
+# LIBS Data
+LIBS <- read.csv(here("data","LIBS_data.csv"))
+
+# SST Data
+SST <- read.csv(here("data","SST_Data-Pinmatik.csv")) %>% 
+  mutate(season=as_factor(season) %>% fct_shift(3),
+         date=as.Date(date))
+
+# Chlorophyll Data
+Chl <- read_csv(here("data","chl.csv"), col_types = cols(time = col_character()),skip = 6) %>% 
+  mutate(time=lubridate::as_date(time),
+         time=round_date(time,unit="month"),
+         month=as_factor(month(time)),
+         year= as_factor(year(time)))
+
+
+```
+
+# Figure 1 - Time series of Chlorophyll-a data
+```{r}
+
+Chl %>%
+  group_by(month) %>%
+  summarize(avg_chl = mean(chl, na.rm = TRUE),
+            sd_chl = sd(chl, na.rm = TRUE)) %>% 
+ggplot()+
+  aes(x = month, y = avg_chl, group=1) +
+  geom_path(col="darkgreen",linewidth=1) +
+  geom_ribbon(aes(ymin = avg_chl - sd_chl, ymax = avg_chl + sd_chl),
+              alpha = 0.3,fill="darkgreen") +
+  xlab("Month") +
+  ylab(expression("Average mass concentration of chlorophyll-a (mg/m"^3*")")) +
+  ylim(0,3)+
+  ggtitle("Monthly Changes in Chlorophyll-a", subtitle= "Period of 1997 - 2023")+
+  theme_cowplot(20)
+
+# ggsave(here("Figures", "Figure 1.png"), units = "cm", height = 29.7, width = 20.7)
+
+```
+
+
+# Figure 5 - Elemental maps and line-scans of *C. solida* specimens from Rocky Cape South
+## Individual graphs
+### C07
+```{r}
+
+C07_Map <- LIBS %>% 
+  filter(specimen=="C07",
+         sample_mode=="map",
+         mg_ca<0.6) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1,show.legend = FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  geom_path(data = LIBS %>% filter(specimen=="C07",sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+  coord_fixed()+  
+  scale_x_continuous(breaks=c(15,14,13),trans = "reverse")+
+    ylab("y-axis [mm]")+ggtitle("C7")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C07_Line <- LIBS %>% 
+  filter(specimen=="C07",
+         sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+
+```
+
+### C08
+```{r C08}
+
+C08_Map <- LIBS %>% 
+  filter(specimen=="C08",
+         sample_mode=="map",
+         mg_ca<0.6,
+         x>29000) %>% 
+  ggplot() +
+  aes(x/ 1000,# transofrm to mm-scale
+      y/ 1000,# transofrm to mm-scale
+      col = mg_ca) + 
+  geom_point(size = 1.5,show.legend = FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = LIBS %>% filter(specimen=="C08",sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+    ylab("y-axis [mm]")+ggtitle("C8")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C08_Line <- LIBS %>% 
+  filter(specimen=="C08",
+         sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+
+```
+
+### C09
+```{r C09}
+
+C09_Map <- LIBS %>% 
+  filter(specimen=="C09",
+         sample_mode=="map",
+         mg_ca<0.6,
+         x>21000) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = LIBS %>% filter(specimen=="C09",sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+    ylab("y-axis [mm]")+ggtitle("C9")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C09_Line <- LIBS %>% 
+  filter(specimen=="C09",
+         sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+
+
+```
+
+## Final Plot Fig 5
+```{r}
+
+C07_Map+C08_Map+C09_Map+C07_Line+C08_Line+C09_Line+plot_annotation(
+                          title="South",
+                          tag_levels = "a"
+                          )+plot_layout(ncol = 3,widths = c(0.5,0.5),guides = "collect")
+
+# ggsave(here("Figures", "Figure 5.png"), units = "cm", width = 29.7, height = 14.85)
+
+```
+
+
+
+
+
+# Figure 6 - Elemental maps and line-scans of *C. solida* specimens from Rocky Cape North
+## Individual Graphs
+### C16
+```{r }
+
+C16_Map <- LIBS %>% 
+  filter(specimen=="C16",
+         sample_mode=="map",
+         mg_ca<0.6,
+         x>29000) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = LIBS %>% filter(specimen=="C16",sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+      ylab("y-axis [mm]")+ ggtitle("C16")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C16_Line <- LIBS %>% 
+  filter(specimen=="C16",
+         sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+
+```
+
+### C17
+```{r}
+
+C17_Map <- LIBS %>% 
+  filter(specimen=="C17",
+         sample_mode=="map",
+         mg_ca<0.6,
+         x>25000) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1,show.legend=FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  geom_path(data = LIBS %>% filter(specimen=="C17",sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+  coord_fixed()+
+  scale_x_reverse()+
+    ylab("y-axis [mm]")+ggtitle("C17")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C17_Line <- LIBS %>% 
+  filter(specimen=="C17",
+         sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+
+
+```
+
+### C18
+```{r}
+
+C18_Map <- LIBS %>% 
+  filter(specimen=="C18",
+         sample_mode=="map",
+         mg_ca<0.6,
+         x>25000) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1,show.legend=FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = LIBS %>% filter(specimen=="C18",sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+    ylab("y-axis [mm]")+ggtitle("C18")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C18_Line <- LIBS %>% 
+  filter(specimen=="C18",
+         sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+```
+
+## Final Plot Fig. 6
+```{r}
+
+C16_Map+C17_Map+C18_Map+C16_Line+C17_Line+C18_Line+plot_annotation(
+                          title="North",
+                          tag_levels = "a"
+                          )+plot_layout(ncol = 3,widths = c(0.5,0.5),guides = "collect")
+
+# ggsave(here("Figures", "Figure 6.png"), units = "cm", width = 29.7, height = 14.85)
+
+
+```
+
+
+
+# Figure 7 - Sequential stable isotope data
+```{r}
+Isotopes %>% 
+  filter(element=="O") %>% 
+ggplot()+
+  aes(
+    x=sample_seq,
+    y=VPDB,
+  )+
+  geom_path()+
+  geom_point() +
+  ylab(expression("δ" ^ "18" * "O‰ [VPDB]"))+
+  # theme(legend.title = element_text(colour="white"))+
+  # scale_linetype_discrete(
+    # limits = c("O", "C"),
+    # labels = c(expression("δ" ^ "18" * "O"), expression("δ" ^ "13" * "C")))+
+  # theme(legend.position = c(0.4,0.5),
+  #       legend.key.size = unit(1, "cm"))+
+  facet_wrap(~specimen) +
+  theme(strip.text = element_text(size=15, face="bold", hjust=0),
+        strip.background = element_rect(colour="white", fill="white")) +
+  xlab("Sample sequence")
+
+
+# ggsave(here("Figures", "Figure 7.png"), units = "cm", width = 29.7, height = 14.85)
+
+
+```
+
+# Figure 8 - Correlation graphs of the two sequentially sampled shells for SI analysis
+## Turn SST data into δ^18^O values
+```{r}
+SST_O <- 
+  SST %>% select(date,sst) %>%
+  mutate(date=as.numeric(date)-16071) %>% #needs numeric value for matrix
+  as.matrix() %>% # next function needs matrix
+  d18O_model(d18Ow=0.55,mineral="calcite") %>% # δ18Owater is 0.5 based on δ18O=( 0.25- S)−8.2 and salinity (S) is around 35 psu.
+  as_tibble() %>% 
+  rename(date=V1,d18O=V2) %>% 
+  mutate(date=as.Date.numeric(date,origin = "2014-01-02")) #put dates back
+```
+
+## C16
+#### Warp data
+```{r}
+
+SeqC16_O <- Isotopes %>% 
+  filter(specimen=="C16",
+         element=="O") %>% 
+  rename(O=VPDB) %>% 
+  na.omit() %>% 
+  arrange(desc(row_number())) %>% #flip the data so the past is facing the other way 
+  pull(O)
+  
+SeqSST_O<- SST_O %>% 
+  filter(date>"2014-02-25",
+         date<"2017-06-02") %>% 
+  pull(d18O)
+
+
+alignment_C16 <- dtw(SeqC16_O,SeqSST_O,
+                 keep=TRUE,
+                 step.pattern=symmetric2)
+    
+# Uncomment to see alignment
+# plot(alignment_C16,
+#      type = "twoway",
+#      offset = 3)
+```
+
+#### Adjust data
+
+```{r}
+
+Al_C16_O <- Isotopes %>%
+  filter(specimen=="C16",
+         element=="O") %>%
+  na.omit() %>%
+  mutate(x=43:1,
+         proxy="d18Os") %>%
+  rename(value=VPDB) %>%
+  select(x,value,proxy)
+
+
+Al_C16_SST_O <- SST_O %>%
+  filter(date>"2014-02-25",
+         date<"2017-06-02") %>% 
+  pull(d18O) %>%
+  .[alignment_C16$index2] %>% 
+  as.data.frame() %>% 
+  clean_names() %>% 
+  rename(value=x) %>% 
+  cbind(x=alignment_C16$index1) %>% 
+    mutate(proxy="d18Oest")
+
+
+C16_SST_O_aligned <- rbind(Al_C16_O,Al_C16_SST_O) %>% 
+  group_by(x,proxy) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x)) 
+
+
+Al_C16_O_plot <- C16_SST_O_aligned %>%
+  filter(proxy=="d18Os") %>% 
+ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+  ylab("‰ VPDB")+
+  ggtitle("Shell data")
+
+Al_C16_SST_O_plot <- C16_SST_O_aligned %>%
+  filter(proxy=="d18Oest") %>% 
+ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+    ylab("‰ VPDB")+
+    ggtitle("Water data")
+
+
+
+# Uncomment to see aligned data
+# Al_C16_O_plot/Al_C16_SST_O_plot
+``` 
+
+
+
+
+### C17
+#### Warp data
+
+```{r}
+
+SeqC17_O <- Isotopes %>% 
+  filter(specimen=="C17",
+         element=="O") %>% 
+  rename(O=VPDB) %>% 
+  na.omit() %>% 
+  arrange(desc(row_number())) %>% #flip the data so the past is facing the other way 
+  pull(O)
+  
+
+alignment_C17 <- dtw(SeqC17_O,SeqSST_O,
+                 keep=TRUE,
+                 step.pattern=symmetric2)
+# Uncomment to see alignment           
+# plot(alignment_C17,
+#      type = "twoway",
+#      offset = 3)
+```
+
+#### Adjust data
+
+```{r}
+
+Al_C17_O <- Isotopes %>%
+  filter(specimen=="C17",
+         element=="O") %>%
+  na.omit() %>%
+  mutate(x=46:1,
+         proxy="d18Os") %>%
+  rename(value=VPDB) %>%
+  select(x,value,proxy)
+
+  
+Al_C17_SST_O <- SST_O %>%
+  filter(date>"2014-02-25",
+         date<"2017-06-02") %>% 
+  pull(d18O) %>%
+  .[alignment_C17$index2] %>% 
+  as.data.frame() %>% 
+  clean_names() %>% 
+  rename(value=x) %>% 
+  cbind(x=alignment_C17$index1) %>% 
+    mutate(proxy="d18Oest")
+
+
+C17_SST_O_aligned <- rbind(Al_C17_O,Al_C17_SST_O) %>% 
+  group_by(x,proxy) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x)) 
+
+
+Al_C17_O_plot <- C17_SST_O_aligned %>%
+  filter(proxy=="d18Os") %>% 
+ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+  ylab("‰ VPDB")+
+  ggtitle("Shell data")
+
+Al_C17_SST_O_plot <- C17_SST_O_aligned %>%
+  filter(proxy=="d18Oest") %>% 
+ggplot()+
+  aes(x=x,
+      y=value)+
+  geom_line()+
+  xlab("arbitrary distance")+
+    ylab("‰ VPDB")+
+    ggtitle("Water data")
+
+
+
+# Uncomment to see alignment
+# Al_C17_O_plot/Al_C17_SST_O_plot
+``` 
+
+## SST to d18O correlations
+### C16
+```{r}
+# C16
+df_C16_SST_O <- C16_SST_O_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  na.omit() %>% 
+  select(d18Os,d18Oest)
+
+LM_C16_SST_O <- lm(d18Os ~ d18Oest,
+         data=df_C16_SST_O,
+         )
+R2_C16_SST_O <- round(summary(LM_C16_SST_O)[[8]],2)
+
+P_C16_SST_O <- ifelse(lmp(LM_C16_SST_O)<0.001,"p<0.001",
+                ifelse(lmp(LM_C16_SST_O)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C16_SST_O)<0.05,"p<0.05","ns!!!")))
+
+Stat_C16_SST_O <- paste0("R²=", R2_C16_SST_O,", ",P_C16_SST_O)
+
+
+
+Fig8_a <- C16_SST_O_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>%
+  ggplot() +
+  aes(x = d18Os,
+      y = d18Oest) +
+  geom_point() +
+  # xlim(-0.5, 2.5) +
+  # ylim(0.2, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+ylab(expression("δ"^"18"*"O"[Water]*" [VPDB]")) +
+  xlab(expression("δ" ^ "18" * "O"[Shell]*" [VPDB]"))+
+  ggtitle("C16",#"Correlation graph for C17 d18O and Mg/Ca",
+          subtitle = Stat_C16_SST_O)
+
+
+
+```
+
+### C17
+```{r}
+# C17
+df_C17_SST_O <- C17_SST_O_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  na.omit() %>% 
+  select(d18Os,d18Oest)
+
+LM_C17_SST_O <- lm(d18Os ~ d18Oest,
+         data=df_C17_SST_O,
+         )
+R2_C17_SST_O <- round(summary(LM_C17_SST_O)[[8]],2)
+
+P_C17_SST_O <- ifelse(lmp(LM_C17_SST_O)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17_SST_O)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17_SST_O)<0.05,"p<0.05","ns!!!")))
+
+Stat_C17_SST_O <- paste0("R²=", R2_C17_SST_O,", ",P_C17_SST_O)
+
+
+Fig8_b <- C17_SST_O_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>%
+  ggplot() +
+  aes(x = d18Os,
+      y = d18Oest) +
+  geom_point() +
+  # xlim(-0.5, 2.5) +
+  # ylim(0.2, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+  ylab(expression("δ" ^ "18" * "O"[Water]*" [VPDB]"))+
+  xlab(expression("δ" ^ "18" * "O"[Shell]*" [VPDB]"))+
+  ggtitle("C17",#"Correlation graph for C17 d18O and Mg/Ca",
+          subtitle = Stat_C17_SST_O)
+
+
+
+```
+## Final Plot Figure 8
+```{r}
+Fig8_a+Fig8_b
+# ggsave(here("Figures", "Figure 8.png"), units = "cm", width = 29.7, height = 14.85)
+
+```
+
+# Figure 9 - Comparison of climatic and geochemical datasets of C16 and C17
+## SST
+```{r}
+
+season_colors <- c(
+  Summer = "#FDBE85", # Warm, light orange for Summer
+  Autumn = "#F8766D", # Rich, earthy orange for Autumn
+  Winter = "#6BAED6", # Cool, soft blue for Winter
+  Spring = "#31A354"  # Fresh, vibrant green for Spring
+)
+
+SST_plot <-
+  SST %>% 
+  ggplot()+
+  aes(x=date,y=sst,col=season,group=year) +
+  geom_line()+
+  ylab("SST ºC")+
+    scale_color_manual(values = season_colors)+
+theme(legend.position = "bottom", legend.justification = "center")+
+  theme(legend.margin = margin(t = -45, unit = "pt"))+
+  labs(y="SST ºC",x="",col="")+
+  geom_vline(xintercept = as.numeric(as.Date("2014-02-25")), linetype=2)+
+  geom_vline(xintercept = as.numeric(as.Date("2015-02-25")), linetype=2)+
+  geom_vline(xintercept = as.numeric(as.Date("2016-02-10")), linetype=2)+
+  geom_vline(xintercept = as.numeric(as.Date("2017-03-20")), linetype=2)
+
+```
+
+
+## C16
+```{r}
+C16_O_plot <- Isotopes %>% 
+  filter(element=="O",
+         specimen=="C16") %>%
+  na.omit() %>% 
+  ggplot()+
+  aes(x=sample_seq,y=VPDB)+
+  geom_line()+
+  geom_vline(xintercept = 43, linetype=2)+
+  geom_vline(xintercept = 34, linetype=2)+
+  geom_vline(xintercept = 28, linetype=2)+
+  geom_vline(xintercept = 4, linetype=2)+
+  ylim(2.5,-0.5)+
+  ylab(expression("δ" ^ "18" * "O [VPDB]"))+
+  xlab("sample number")+
+  scale_x_reverse()
+
+C16_Mg_Ca_plot <-
+  LIBS %>% 
+   filter(specimen=="C16",
+         sample_mode == "trace") %>%
+  ggplot() +
+  aes(x = dist,
+      y = mg_ca) +
+  geom_path() +
+  scale_x_reverse()+
+  xlab("Distance to Edge [mm]")+
+  ylab("Mg/Ca ratio")+
+  geom_vline(xintercept = 0.3, linetype=2)+
+  geom_vline(xintercept = 3.5, linetype=2)+
+  geom_vline(xintercept = 8.9, linetype=2)+
+  geom_vline(xintercept = 6, linetype=2)+
+  geom_vline(xintercept = 4.4, linetype=2)+
+  annotate("rect", xmin = 0, xmax = 6.05, ymin = 0.25, ymax = 0.47,
+  alpha = .2)+
+  annotate("text",x=1.1,y=0.49,label=as.character(expression("extent of δ" ^ "18" * "O record")), alpha=.6,parse=TRUE,size=2.5)
+
+
+Fig9_a <- SST_plot/C16_O_plot/C16_Mg_Ca_plot+plot_annotation(title = "C16")
+
+```
+
+## C17
+```{r}
+
+C17_O_plot <- Isotopes %>% 
+  filter(element=="O",
+         specimen=="C17") %>% 
+  ggplot()+
+  aes(x=sample_seq,y=VPDB)+
+  geom_line()+
+  geom_vline(xintercept = 10, linetype=2)+
+  geom_vline(xintercept = 37, linetype=2)+
+  geom_vline(xintercept = 44, linetype=2)+
+  geom_vline(xintercept = 51, linetype=2)+
+  ylim(2.5,-0.5)+
+  ylab(expression("δ" ^ "18" * "O [VPDB]"))+
+  xlab("sample number")+
+  scale_x_reverse()
+
+C17_Mg_Ca_plot <-
+  LIBS %>% 
+   filter(specimen=="C17",
+         sample_mode == "trace") %>% 
+  ggplot() +
+  aes(x = dist,
+      y = mg_ca) +
+  geom_path() +
+  scale_x_reverse()+
+  xlab("Distance to Edge [mm]")+
+  ylab("Mg/Ca ratio")+
+  geom_vline(xintercept = 0.8, linetype=2)+
+  geom_vline(xintercept = 3.5, linetype=2)+
+  geom_vline(xintercept = 8.6, linetype=2)+
+  geom_vline(xintercept = 5.4, linetype=2)+
+  geom_vline(xintercept = 4.7, linetype=2)+
+  annotate("rect", xmin = 0, xmax = 5.6, ymin = 0.25, ymax = 0.61,
+  alpha = .2)+
+  annotate("text",x=1.65,y=0.64,label=as.character(expression("extent of δ" ^ "18" * "O record")), alpha=.6,parse=TRUE,size=2.5)
+
+
+
+Fig9_b <- SST_plot/C17_O_plot/C17_Mg_Ca_plot+plot_annotation(title = "C17")
+
+```
+
+## Final Plot for Figure 9
+```{r}
+Fig9_a|Fig9_b
+
+# ggsave(here("Figures", "Figure 9.png"), units = "cm", width = 29.7, height = 14.85)
+```
+
+# Figure 10 - Correlation graphs of the two sequentially sampled shells for SI analysis with Mg/Ca data
+## C16
+### Warp data
+
+```{r fig.height=4}
+
+SeqC16_O <- Isotopes %>% 
+  filter(specimen=="C16",
+         element=="O") %>% 
+  mutate(O=scale(VPDB)) %>% 
+  na.omit() %>% 
+  pull(O)
+  
+SeqC16_mg_ca <- LIBS %>% 
+  filter(specimen=="C16",
+         sample_mode=="trace",
+         dist<5.5) %>% # this value was chosen as an estimate to shorten the LIBS data to the length of the isotope data
+    mutate(mg_ca=scale(mg_ca)) %>% 
+  pull(mg_ca) 
+
+alignment_C16 <- dtw(SeqC16_O*-1,SeqC16_mg_ca,
+                 keep=TRUE,
+                 step.pattern=symmetric2)
+           
+# Uncomment to see alignment of datasets
+# plot(alignment_C16,
+#      type = "twoway",
+#      offset = 3)
+```
+
+### Adjust data
+```{r}
+
+Al_C16_O <- Isotopes %>% 
+  filter(specimen=="C16",
+         element=="O") %>%  
+  na.omit() %>% 
+  mutate(x=1:43,
+         proxy="O") %>% 
+  rename(value=VPDB) %>% 
+  select(x,value,proxy)
+  
+Al_C16_mg_ca <- LIBS %>% 
+  filter(sample_mode=="trace",
+         specimen=="C16",
+         dist<5.5) %>%
+  pull(mg_ca) %>%
+  .[alignment_C16$index2] %>% 
+  as.data.frame() %>% 
+  clean_names() %>% 
+  rename(value=x) %>% 
+  cbind(x=alignment_C16$index1) %>% 
+    mutate(proxy="mg_ca")
+
+
+C16_aligned <- bind_rows(Al_C16_O,Al_C16_mg_ca) %>% 
+  group_by(x,proxy) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x))
+
+# Uncomment to see alignment of both adjusted datasets
+# Al_C16_O_map <- C16_aligned %>%
+#   filter(proxy=="O") %>% 
+# ggplot()+
+#   aes(x=x,
+#       y=value)+
+#   geom_line()+
+#   scale_y_reverse()+
+#   xlab("arbitrary distance")+
+#   ylab("inverse VPDB")
+# 
+# Al_C16_mg_ca_map <- C16_aligned %>%
+#   filter(proxy=="mg_ca") %>% 
+# ggplot()+
+#   aes(x=x,
+#       y=value)+
+#   geom_line()+
+#   xlab("arbitrary distance")+
+#     ylab("Mg/Ca ratio")
+#   # ylim(0.,0.4)
+# 
+# 
+# 
+# Al_C16_O_map/Al_C16_mg_ca_map
+
+
+```
+
+### Correlation of d18O to Mg/Ca
+```{r}
+# C16
+df_C16 <- C16_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  select(O,mg_ca)
+
+LM_C16 <- lm(O ~ mg_ca,
+         data=df_C16,
+         )
+R2_C16 <- round(summary(LM_C16)[[8]],2)
+
+P_C16 <- ifelse(lmp(LM_C16)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
+
+Stat_C16 <- paste0("R²=", R2_C16,", ",P_C16)
+
+Fig10_a <- C16_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>%
+  ggplot() +
+  aes(x = O,
+      y = mg_ca) +
+  geom_point() +
+  xlim(-0.5, 2.5) +
+  ylim(0.2, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+  ylab("Mg/Ca Ratio") +
+  xlab(expression("δ" ^ "18" * "O [VPDB]"))+
+  ggtitle("C16",#"Correlation graph for C16 d18O and Mg/Ca",
+          subtitle = Stat_C16)
+```
+
+
+## C17
+### Warp data
+
+```{r fig.height=4}
+
+SeqC17_O <- Isotopes %>% 
+  filter(specimen=="C17",
+         element=="O") %>% 
+  mutate(O=scale(VPDB)) %>% 
+  na.omit() %>% 
+  pull(O)
+  
+SeqC17_mg_ca <- LIBS %>% 
+  filter(specimen=="C17",
+         sample_mode=="trace",
+         dist<5.2) %>% # this value was chosen as an estimate to shorten the LIBS data to the length of the isotope data
+    mutate(mg_ca=scale(mg_ca)) %>% 
+  pull(mg_ca) 
+
+alignment_C17 <- dtw(SeqC17_O*-1,SeqC17_mg_ca,
+                 keep=TRUE,
+                 step.pattern=symmetric2)
+           
+# Uncomment to see alignment of datasets
+plot(alignment_C17,
+     type = "twoway",
+     offset = 3)
+```
+
+### Adjust data
+```{r}
+
+Al_C17_O <- Isotopes %>% 
+  filter(specimen=="C17",
+         element=="O") %>%  
+  na.omit() %>% 
+  mutate(x=1:46,
+         proxy="O") %>% 
+  rename(value=VPDB) %>% 
+  select(x,value,proxy)
+  
+Al_C17_mg_ca <- LIBS %>% 
+  filter(sample_mode=="trace",
+         specimen=="C17",
+         dist<5.2) %>%
+  pull(mg_ca) %>%
+  .[alignment_C17$index2] %>% 
+  as.data.frame() %>% 
+  clean_names() %>% 
+  rename(value=x) %>% 
+  cbind(x=alignment_C17$index1) %>% 
+    mutate(proxy="mg_ca")
+
+
+C17_aligned <- bind_rows(Al_C17_O,Al_C17_mg_ca) %>% 
+  group_by(x,proxy) %>%
+  summarise(value=mean(value)) %>% #this unifies points that were given the same location
+  ungroup() %>%
+  mutate(value=round(value+0.000001*row_number(),5)) %>% #this adds some error to data points that are similar but far away from each other and prevents them to be grouped as one in the grouping step below
+  group_by(proxy,value) %>% # this unifies extra points that were added to fill gaps in the record
+  summarise(x=mean(x))
+
+# Uncomment to see alignment of both adjusted datasets
+# Al_C17_O_map <- C17_aligned %>%
+#   filter(proxy=="O") %>%
+# ggplot()+
+#   aes(x=x,
+#       y=value)+
+#   geom_line()+
+#   scale_y_reverse()+
+#   xlab("arbitrary distance")+
+#   ylab("inverse VPDB")
+# 
+# Al_C17_mg_ca_map <- C17_aligned %>%
+#   filter(proxy=="mg_ca") %>%
+# ggplot()+
+#   aes(x=x,
+#       y=value)+
+#   geom_line()+
+#   xlab("arbitrary distance")+
+#     ylab("Mg/Ca ratio")
+#   # ylim(0.,0.4)
+# 
+# 
+# 
+# Al_C17_O_map/Al_C17_mg_ca_map
+
+
+```
+
+### Correlation of d18O to Mg/Ca
+```{r}
+# C17
+df_C17 <- C17_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>% 
+  select(O,mg_ca)
+
+LM_C17 <- lm(O ~ mg_ca,
+         data=df_C17,
+         )
+R2_C17 <- round(summary(LM_C17)[[8]],2)
+
+P_C17 <- ifelse(lmp(LM_C17)<0.001,"p<0.001",
+                ifelse(lmp(LM_C17)<0.01,"p<0.01",
+                       ifelse(lmp(LM_C17)<0.05,"p<0.05","ns!!!")))
+
+Stat_C17 <- paste0("R²=", R2_C17,", ",P_C17)
+
+Fig10_b <- C17_aligned %>%
+  pivot_wider(names_from = "proxy",
+              values_from = "value") %>%
+  ggplot() +
+  aes(x = O,
+      y = mg_ca) +
+  geom_point() +
+  xlim(-0.5, 2.5) +
+  ylim(0.2, 0.5) +
+  geom_smooth(method = "lm",
+              se = FALSE,
+              col="black",
+              linetype="dashed",
+              size=0.5) +
+  ylab("Mg/Ca Ratio") +
+  xlab(expression("δ" ^ "18" * "O [VPDB]"))+
+  ggtitle("C17",#"Correlation graph for C17 d18O and Mg/Ca",
+          subtitle = Stat_C17)
+```
+
+## Final Plot for Figure 10
+```{r}
+Fig10_a+Fig10_b
+
+# ggsave(here("Figures", "Figure 10.png"), units = "cm", width = 29.7, height = 14.85)
+
+```
+

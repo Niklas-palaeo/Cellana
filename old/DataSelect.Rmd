@@ -1,0 +1,112 @@
+---
+output: pdf_document
+---
+
+# Libraries 
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+{
+  pacman::p_load(
+    here,sf,ggmap,sp,spdep,rgeos,geosphere,
+    janitor,
+    tidyverse,
+    cowplot,ggx,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+
+source(here('make_trace.R'))
+source(here('make_crop.R'))
+
+
+
+```
+
+# Data
+
+```{r}
+C7_M <- read_delim(
+  "data/C7_MgMap_50.txt",
+  "\t",
+  escape_double = FALSE,
+  col_names = FALSE,
+  trim_ws = TRUE
+) %>%
+  rename(x=X1,y=X2,z=X3,mg_ca=X4) %>%
+  select(-X5,-z) %>%
+  mutate(x=x/1000,
+         y=y/1000) #changing to millimetres
+
+
+
+
+
+make_trace(C7_M, buffer=0.1, point_num = 2, resolution = 50)# function needs map that is has columns of x,y, mg_ca in that order
+
+ggsave(here("Plots","filename.eps"), device=cairo_ps)
+
+
+```
+
+#Other shells
+```{r C08}
+
+C08 <- read.csv("/Users/tco/Desktop/Projects/UniKram/R/Cellana/data/C08.csv")
+
+
+C08 <- C08 %>% 
+  filter(sample_mode=="map") %>%
+  select(x,y,mg_ca) %>%
+  mutate(x=x/1000,
+        y=y/1000)
+
+C08_small <- make_crop(C08) 
+
+make_trace(C08_small, buffer = 0.5, point_num = 4, resolution = 150)
+
+# this works but opens two windows, which is annoying
+make_crop(C08) %>% 
+make_trace(buffer = 0.2, point_num = 4, resolution = 100)
+
+
+
+# AF3
+
+AF3 <- read_csv("data/AF3.txt") %>% 
+  clean_names() %>% 
+  select(x,y,mg_ca) %>%
+  mutate(x=x/1000,
+         y=y/1000)
+
+
+AF3_small <- make_crop(AF3) 
+
+make_trace(AF3_small, buffer = 0.2, point_num = 6, resolution = 75)
+
+# this works but opens two windows, which is annoying
+make_crop(AF3) %>% 
+make_trace(buffer = 0.2, point_num = 4, resolution = 100)
+
+# AKK
+
+AKK <- read_csv("data/AKK.txt") %>% 
+  clean_names() %>% 
+  select(x,y,mg_ca) %>%
+  mutate(x=x/1000,
+         y=y/1000)
+
+
+AKK_small <- make_crop(AKK) 
+
+make_trace(AKK_small, buffer = 0.2, point_num = 4, resolution = 75, limit=0.5)
+
+# this works but opens two windows, which is annoying
+make_crop(AKK) %>% 
+make_trace(buffer = 0.2, point_num = 4, resolution = 100)
+
+
+```
+

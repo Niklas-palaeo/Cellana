@@ -1,0 +1,506 @@
+---
+output: pdf_document
+---
+
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+
+  pacman::p_load(
+    here,
+    janitor,
+    tidyverse,
+    cowplot,ggx,viridis,
+    patchwork,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+
+```
+
+```{r Data, include=FALSE}
+C07 <- read_csv(here("data","C07.csv"),
+                       col_types = cols(dist = col_double(),
+                                        st_dev = col_double())#sometimes these rows are read as logical instead of double
+                       ) %>% mutate(specimen="C07")
+
+C07_all <- read_csv(here("data","Fleur_C7_MgMap_50.csv")) %>%
+  mutate(specimen="C07",
+         resolution=50) %>% 
+  bind_rows(read_csv(here("data","Fleur_C7_MgMap_150Rest.csv")) %>%
+  mutate(specimen="C07",
+         resolution=150))
+
+C08 <- read_csv(here("data","C08.csv"),
+                       col_types = cols(dist = col_double())#sometimes this row is read as logical instead of double
+        ) %>% mutate(specimen="C08")
+
+
+C09 <- read_csv(here("data","C09.csv"),
+                       col_types = cols(dist = col_double())#sometimes this row is read as logical instead of double
+) %>% mutate(specimen="C09")
+
+C16 <- read_csv(here("data","C16.csv"),
+                       col_types = cols(dist = col_double())#sometimes this row is read as logical instead of double
+) %>% mutate(specimen="C16")
+
+C17 <- read_csv(here("data","C17.csv"),
+                       col_types = cols(dist = col_double())#sometimes this row is read as logical instead of double
+) %>% mutate(specimen="C17")
+ 
+
+C18 <- read_csv(here("data","C18.csv"),
+                       col_types = cols(dist = col_double())#sometimes this row is read as logical instead of double
+) %>% mutate(specimen="C18")
+
+
+LIBS <- bind_rows(C07,C08,C09,C16,C17,C18)
+# write_csv(LIBS,here("data","LIBS.csv"))
+
+```
+
+
+# Plots
+## South
+### Plots
+
+```{r C07}
+
+C07M <- C07 %>%
+  # mutate(x = x 
+  #        y = y / 1000) %>%
+  filter(sample_mode=="map",
+         mg_ca<0.6) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1,show.legend = FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  geom_path(data = C07 %>% filter(sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+  coord_fixed()+  
+  scale_x_continuous(breaks=c(15,14,13),trans = "reverse")+
+    ylab("y-axis [mm]")+ggtitle("C7")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C07T <- C07 %>%
+  filter(sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+C07M/C07T+plot_annotation(
+                          # title="C07",
+                          # subtitle="Map and Linescan",
+                          tag_levels = "A"
+                          )
+
+
+ggsave(here("figures","C07.png"), width = 15, height = 20, units = "cm")
+
+
+```
+
+
+```{r C08}
+
+C08M <- C08 %>%
+  # mutate(x = x 
+  #        y = y / 1000) %>%
+  filter(sample_mode=="map",
+         mg_ca<0.6,
+         x>29000) %>% 
+  ggplot() +
+  aes(x/ 1000,# transofrm to mm-scale
+      y/ 1000,# transofrm to mm-scale
+      col = mg_ca) + 
+  geom_point(size = 1.5,show.legend = FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = C08 %>% filter(sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+    ylab("y-axis [mm]")+ggtitle("C8")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C08T <- C08 %>%
+  filter(sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+C08M/C08T+plot_annotation(
+                          # title="C08",
+                          # subtitle="Map and Linescan",
+                          tag_levels = "A"
+                          )
+
+ggsave(here("figures","C08.png"), width = 15, height = 20, units = "cm")
+
+
+```
+
+
+```{r C09}
+
+C09M <- C09 %>%
+  # mutate(x = x 
+  #        y = y / 1000) %>%
+  filter(sample_mode=="map",
+         mg_ca<0.6,
+         x>21000) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = C09 %>% filter(sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+    ylab("y-axis [mm]")+ggtitle("C9")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C09T <- C09 %>%
+  filter(sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+C09M/C09T+plot_annotation(
+                          # title="C09",
+                          # subtitle="Map and Linescan",
+                          tag_levels = "A"
+                          )
+
+ggsave(here("figures","C09.png"), width = 15, height = 20, units = "cm")
+
+
+```
+
+### Summary Plot
+```{r}
+
+C07M+C08M+C09M+C07T+C08T+C09T+plot_annotation(
+                          title="South",
+                          tag_levels = "a"
+                          )+plot_layout(ncol = 3,widths = c(0.5,0.5),guides = "collect")
+
+
+ggsave(here("figures","South.png"), width = 30, height = 20, units = "cm")
+
+```
+
+## North
+### Plots
+```{r C16}
+
+C16M <- C16 %>%
+  # mutate(x = x 
+  #        y = y / 1000) %>%
+  filter(sample_mode=="map",
+         mg_ca<0.6,
+         x>29000) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = C16 %>% filter(sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+      ylab("y-axis [mm]")+ ggtitle("C16")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C16T <- C16 %>%
+  filter(sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+C16M/C16T+plot_annotation(
+                          # title="C16",
+                          # subtitle="Map and Linescan",
+                          tag_levels = "A"
+                          )
+
+ggsave(here("figures","C16.png"), width = 15, height = 20, units = "cm")
+
+
+```
+
+
+```{r C17}
+
+C17M <- C17 %>%
+  # mutate(x = x
+  #        y = y / 1000) %>%
+  filter(sample_mode=="map",
+         mg_ca<0.6
+         # x>25000
+         ) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1,show.legend=FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  geom_path(data = C17 %>% filter(sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+  coord_fixed()+
+  scale_x_reverse()+
+    ylab("y-axis [mm]")+ggtitle("C17")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C17T <- C17 %>%
+  filter(sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+C17M/C17T+plot_annotation(
+                          # title="C17",
+                          # subtitle="Map and Linescan",
+                          tag_levels = "A"
+                          )
+
+ggsave(here("figures","C17.png"), width = 15, height = 20, units = "cm")
+
+
+```
+
+
+```{r C18}
+
+C18M <- C18 %>%
+  # mutate(x = x 
+  #        y = y / 1000) %>%
+  filter(sample_mode=="map",
+         mg_ca<0.6,
+         x>25000) %>% 
+  ggplot() +
+  aes(x/ 1000,
+      y/ 1000,
+      col = mg_ca) +
+  geom_point(size = 1,show.legend=FALSE) +
+  scale_color_viridis(option = "G",
+                      begin = 0,
+                      end = 0.95) +
+  coord_fixed()+  scale_x_reverse()+
+
+  geom_path(data = C18 %>% filter(sample_mode=="trace"),
+            aes(x = x/ 1000, y = y/ 1000),
+            col = "red",
+            linetype="dashed",
+            size=0.7)+
+    ylab("y-axis [mm]")+ggtitle("C18")+
+  xlab("x-axis [mm]")+labs(col = "Mg/Ca [a.u.]")
+
+
+
+C18T <- C18 %>%
+  filter(sample_mode == "trace") %>%
+  ggplot() +
+  aes(dist,
+      mg_ca,
+      col = mg_ca) +
+  geom_path(show.legend=FALSE,size=1) +
+  scale_color_viridis(option = "G",
+                      begin = 0.5,
+                      end = 0.95) +
+  ylab("Mg/Ca [a.u.]") +
+  xlab("Distance to edge [mm]")
+
+  
+
+C18M/C18T+plot_annotation(
+                          # title="C18",
+                          # subtitle="Map and Linescan",
+                          tag_levels = "A"
+                          )
+
+ggsave(here("figures","C18.png"), width = 15, height = 20, units = "cm")
+
+
+```
+
+### Summary Plot
+```{r}
+
+C16M+C17M+C18M+C16T+C17T+C18T+plot_annotation(
+                          title="North",
+                          tag_levels = "a"
+                          )+plot_layout(ncol = 3,widths = c(0.5,0.5),guides = "collect")
+
+
+ggsave(here("figures","North.png"), width = 30, height = 20, units = "cm")
+
+```
+
+
+
+
+
+## Full maps
+```{r}
+
+Specimen <- LIBS %>% pull(specimen) %>% unique()
+
+for(i in Specimen) {
+  
+  plot <- LIBS %>% 
+    filter(sample_mode == "map",
+           mg_ca < 0.6,
+           specimen == i) %>% 
+    ggplot() +
+    aes(x/1000, y/1000, col = mg_ca) +
+    geom_point(size = 1, show.legend = TRUE) +
+    scale_color_viridis(option = "G", begin = 0, end = 0.95) +
+    coord_fixed() +
+    ylab("y-axis [mm]") + 
+    ggtitle(paste(i)) +
+    xlab("x-axis [mm]") +
+    labs(col = "Mg/Ca [a.u.]")
+  
+  
+    ggsave(filename = here("Plots",paste0("Full map of ",i, ".png")), plot = plot)
+
+}
+
+
+
+
+```
+
+## Full Map for C7 because it has two resolutiond
+
+```{r}
+
+
+
+P_C07_50 <- C07_all %>% 
+  filter(mg_ca < 0.6&resolution==50) %>% 
+    ggplot() +
+    aes(y/1000, x/1000, col = mg_ca) +
+    geom_point(size = 1, show.legend = FALSE) +
+    # geom_tile()+
+    scale_color_viridis(option = "G", begin = 0, end = 0.95) +
+    coord_fixed() +
+  scale_x_reverse(breaks=c(15,14,13))+
+    ylab("y-axis [mm]") + 
+    ggtitle("C7") +
+    xlab("x-axis [mm]") +
+    labs(col = "Mg/Ca [a.u.]")
+
+P_C07_50
+
+
+P_C07_150 <- C07_all %>% 
+  filter(mg_ca < 0.6&resolution==150) %>% 
+    ggplot() +
+    aes(x/1000, y/1000, col = mg_ca) +
+    geom_point(size = 1, show.legend = TRUE) +
+    # geom_tile()+
+    scale_color_viridis(option = "G", begin = 0, end = 0.95) +
+    coord_fixed() +
+  # scale_x_reverse(breaks=c(15,14,13))+
+    ylab("y-axis [mm]") + 
+    ggtitle("") +
+    xlab("x-axis [mm]") +
+    labs(col = "Mg/Ca [a.u.]")
+
+P_C07_150
+
+
+p <- P_C07_50+P_C07_150
+
+    ggsave(filename = here("Figures","Full map of C07.png"), plot = p)
+
+
+```
+
+

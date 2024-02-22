@@ -1,0 +1,279 @@
+---
+output: pdf_document
+---
+
+```{r Libraries,echo=FALSE,message = FALSE,warning = FALSE}
+knitr::opts_chunk$set(echo=FALSE,message = FALSE,warning = FALSE)
+
+
+{
+  pacman::p_load(
+    here,
+    janitor,ncdf4,
+    tidyverse,
+    cowplot,ggx,scales,
+    patchwork,ShellChron,ShellChronReverse,
+    RColorBrewer) 
+  
+  theme_set(theme_cowplot())
+}
+
+
+```
+
+# NC data
+```{r}
+
+# our_nc_data <- nc_open(here("data","METOFFICE-GLO-SST-L4-REP-OBS-SST_1708533276778.nc"))
+nc_data <- nc_open(here("data","METOFFICE-GLO-SST-L4-REP-OBS-SST_1708533276778.nc"))
+
+## Extract the sea surface temperature (SST) data
+sst_data <- ncvar_get(nc_data, "analysed_sst")
+
+# Average SST data across all latitude and longitude for each time slice
+sst_avg <- apply(sst_data, 3, mean, na.rm = TRUE)
+
+# Extract time and convert to POSIXct
+time_units <- ncatt_get(nc_data, "time", "units")$value
+time_data <- ncvar_get(nc_data, "time")
+time_posix <- as.POSIXct(time_data, origin = sub(".*since ", "", time_units), tz = "UTC")
+
+# Create a tibble with averaged SST data
+sst_df <- tibble(
+  time = time_posix,
+  sst = sst_avg
+) %>% 
+ mutate(sst = sst - 273.15,
+        year=lubridate::year(time),
+        month = lubridate::month(time),
+        season = case_when(
+                            month %in% c(12, 1, 2) ~ "Summer",
+                            month %in% c(3, 4, 5) ~ "Autumn",
+                            month %in% c(6, 7, 8) ~ "Winter",
+                            month %in% c(9, 10, 11) ~ "Spring"
+                          ),
+        season=as_factor(season) %>% fct_shift(3)
+      )
+
+
+# Close the NetCDF file
+nc_close(nc_data)
+
+write_csv(sst_df %>% mutate(time = as.character(time)),file=here("SST_Data-Pinmatik.csv"))
+
+season_colors <- c(
+  Summer = "#FDBE85", # Warm, light orange for Summer
+  Autumn = "#F8766D", # Rich, earthy orange for Autumn
+  Winter = "#6BAED6", # Cool, soft blue for Winter
+  Spring = "#31A354"  # Fresh, vibrant green for Spring
+)
+
+sst_df %>% 
+ggplot()+
+  aes(time,sst,col=season,group=year)+
+  geom_path(linewidth=1)+
+  scale_color_manual(values = season_colors)+
+  labs(x="",y="Temperature in ºC",col="Season")
+
+```
+
+
+
+
+```{r}
+
+Cella <- read.csv(here("data","Cella.csv"))
+
+
+SST <- read.csv(here("data", "SST_Wynard.csv")) %>%
+  clean_names() %>%
+  separate(day, into = c("day", "month"), extra = "drop") %>%
+  pivot_longer(names_to = "year",
+               values_to = "SST",
+               cols = starts_with("x")) %>%
+  unite(c("year", "month", "day"), col = "date", sep = "/") %>%
+  mutate(date = gsub("x", "", date),
+         date = as.Date(date)) %>% 
+  arrange(date)
+
+
+SST_RC <-   read.csv(here("data", "IWT_LOGGER_GV_DATA.csv")) %>%
+  clean_names() %>%
+  filter(site_name=="Rocky Cape") %>%
+  select(datetime_local,temp_c) %>% 
+   mutate(
+    date = as.Date(datetime_local),  # Extract date
+    # year = year(datetime_local),   # Extract month
+    # month = month(datetime_local),   # Extract month
+    # day = day(datetime_local)        # Extract day
+  ) %>% 
+  group_by(date) %>%
+  mutate(
+    temp_c = mean(temp_c)          # Average temperature per day
+  )  %>% 
+  select(-datetime_local) 
+  
+
+ggplot() +
+  geom_line(data = SST, #%>% filter(date > as.Date("2017-01-01")&
+                                  # date < as.Date("2018-01-01")),
+            aes(x = date,y = SST,col="Wynard"),col = "blue") +
+  geom_line(data = SST_RC,# %>% filter(date > as.Date("2017-01-01")&
+                                     # date < as.Date("2018-01-01")), 
+            aes(x = date, y = temp_c,col="Rocky Cape"), col = "green") +
+  geom_vline(xintercept = as.numeric(as.Date("2017-06-02")), linetype=2)
+
+
+SST_O <- SST %>% 
+  mutate(date=as.numeric(date)-16071) %>% #needs numeric value for matrix
+  as.matrix() %>% # next function needs matrix
+  d18O_model(d18Ow=0.5,mineral="calcite") %>% # δ18Owater is 0.5 based on δ18O=( 0.25- S)−8.2 and salinity (S) is around 35 psu.
+  as_tibble() %>% 
+  rename(date=V1,d18O=V2) %>% 
+  mutate(date=as.Date.numeric(date,origin = "2014-01-02")) #put dates back
+
+
+
+C16Trace_df <- read.csv(here("data","C16.csv")) %>% 
+                filter(sample_mode=="trace")
+
+
+
+# 
+# ,col_names = FALSE) %>% 
+#   rename(y=X1,
+#          x=X2,
+#          z=X3,
+#          dist=X4,
+#          mg_ca=X5,
+#          st_dev=X6)
+
+C17Trace_df <- read.csv(here("data","C17.csv")) %>% 
+                filter(sample_mode=="trace")
+  
+  
+  # read_csv(here("data","C17TraceB.csv"),col_names = FALSE) %>% 
+  # rename(y=X1,
+  #        x=X2,
+  #        z=X3,
+  #        dist=X4,
+  #        mg_ca=X5,
+  #        st_dev=X6)
+
+```
+
+```{r Plot SST+C16, fig.height=9, fig.width=8}
+
+
+
+SST_plot <- SST %>% 
+  filter(date>"2014-01-01",
+         date<"2017-06-02") %>%
+  ggplot()+
+  aes(x=date,y=SST) +
+  geom_line()+
+  ylab("SST ºC")+
+  geom_vline(xintercept = as.numeric(as.Date("2014-02-25")), linetype=2)+
+  geom_vline(xintercept = as.numeric(as.Date("2015-02-25")), linetype=2)+
+  geom_vline(xintercept = as.numeric(as.Date("2016-02-10")), linetype=2)+
+  geom_vline(xintercept = as.numeric(as.Date("2017-03-20")), linetype=2)
+
+# 
+#   O18_SST_plot <-
+#   SST %>% 
+#     d18O_model(d18Ow=.6) %>% 
+#   filter(date>"2015-06-02",
+#          date<"2017-06-02") %>% 
+#   ggplot()+
+#   aes(x=date,y=SST) +
+#   geom_line()+
+#   geom_vline(xintercept = as.numeric(as.Date("2017-03-20")), linetype=2)+
+#   geom_vline(xintercept = as.numeric(as.Date("2016-02-10")), linetype=2)+
+#   ylim(-0.5,2.5)
+
+C16_O_plot <- Cella %>% 
+  filter(element=="O",
+         specimen=="C16") %>%
+  na.omit() %>% 
+  ggplot()+
+  aes(x=sample_seq,y=VPDB)+
+  geom_line()+
+  geom_vline(xintercept = 43, linetype=2)+
+  geom_vline(xintercept = 34, linetype=2)+
+  geom_vline(xintercept = 28, linetype=2)+
+  geom_vline(xintercept = 4, linetype=2)+
+  ylim(-0.5,2.5)+
+  ylab(expression("δ" ^ "18" * "O [VPDB]"))+
+  xlab("sample number")+
+  scale_x_reverse()+
+  scale_y_reverse()
+
+C16_Mg_Ca_plot <-
+  C16Trace_df %>%
+  # filter(dist<5.5) %>% 
+  ggplot() +
+  aes(x = dist,
+      y = mg_ca) +
+  # xlim(0,5)+
+  geom_path() +
+  scale_x_reverse()+
+  xlab("Distance to Edge [mm]")+
+  ylab("Mg/Ca ratio")+
+  geom_vline(xintercept = 0.3, linetype=2)+
+  geom_vline(xintercept = 3.5, linetype=2)+
+  geom_vline(xintercept = 8.9, linetype=2)+
+  geom_vline(xintercept = 6, linetype=2)+
+  geom_vline(xintercept = 4.4, linetype=2)+
+  annotate("rect", xmin = 0, xmax = 6.05, ymin = 0.25, ymax = 0.47,
+  alpha = .2)+
+  annotate("text",x=1.1,y=0.49,label=as.character(expression("extent of δ" ^ "18" * "O record")), alpha=.6,parse=TRUE)
+
+
+SST_plot/C16_O_plot/C16_Mg_Ca_plot+plot_annotation(title = "C16")
+
+```
+
+\newpage
+```{r Plot SST+C17, fig.height=9, fig.width=8}
+C17_O_plot <- Cella %>% 
+  filter(element=="O",
+         specimen=="C17") %>% 
+  ggplot()+
+  aes(x=sample_seq,y=VPDB)+
+  geom_line()+
+  geom_vline(xintercept = 10, linetype=2)+
+  geom_vline(xintercept = 37, linetype=2)+
+  geom_vline(xintercept = 44, linetype=2)+
+  geom_vline(xintercept = 51, linetype=2)+
+  ylim(-0.5,2.5)+
+  ylab(expression("δ" ^ "18" * "O [VPDB]"))+
+  xlab("sample number")+
+  scale_x_reverse()+
+  scale_y_reverse()
+
+
+C17_Mg_Ca_plot <-
+  C17Trace_df %>%
+  # filter(dist<5.5) %>% 
+  ggplot() +
+  aes(x = dist,
+      y = mg_ca) +
+  # xlim(0,5)+
+  geom_path() +
+  scale_x_reverse()+
+  xlab("Distance to Edge [mm]")+
+  ylab("Mg/Ca ratio")+
+  geom_vline(xintercept = 0.8, linetype=2)+
+  geom_vline(xintercept = 3.5, linetype=2)+
+  geom_vline(xintercept = 8.6, linetype=2)+
+  geom_vline(xintercept = 5.4, linetype=2)+
+  geom_vline(xintercept = 4.7, linetype=2)+
+  annotate("rect", xmin = 0, xmax = 5.6, ymin = 0.25, ymax = 0.61,
+  alpha = .2)+
+  annotate("text",x=1.2,y=0.64,label=as.character(expression("extent of δ" ^ "18" * "O record")), alpha=.6,parse=TRUE)
+
+
+
+SST_plot/C17_O_plot/C17_Mg_Ca_plot+plot_annotation(title = "C17")
+
+```
